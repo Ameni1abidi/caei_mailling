@@ -10,19 +10,20 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-{
-    Schema::create('email_logs', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('campaign_id')->constrained()->cascadeOnDelete();
-        $table->foreignId('contact_id')->constrained()->cascadeOnDelete();
-        $table->enum('status', ['pending', 'sent', 'delivered', 'bounced', 'failed'])
-              ->default('pending');
-        $table->boolean('opened')->default(false);
-        $table->boolean('clicked')->default(false);
-        $table->timestamp('sent_at')->nullable();
-        $table->timestamps();
-    });
-}
+    {
+        Schema::create('email_logs', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('campaign_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('contact_id')->constrained()->cascadeOnDelete();
+            $table->enum('status', ['pending', 'sent', 'delivered', 'bounced', 'failed'])
+                  ->default('pending');
+            $table->boolean('opened')->default(false);
+            $table->boolean('clicked')->default(false);
+            $table->text('error_message')->nullable();
+            $table->timestamp('sent_at')->nullable();
+            $table->timestamps();
+        });
+    }
 
     /**
      * Reverse the migrations.
