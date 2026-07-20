@@ -14,6 +14,7 @@ return new class extends Migration
     Schema::create('email_templates', function (Blueprint $table) {
         $table->id();
         $table->string('nom');
+        $table->string('sujet')->nullable();
         $table->longText('contenu');
         $table->timestamps();
     });
