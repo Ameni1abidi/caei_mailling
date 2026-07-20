@@ -22,6 +22,8 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('campaigns', CampaignController::class)->except(['show']);
     Route::get('campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('campaigns.preview');
+
+    Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
 });
 
 

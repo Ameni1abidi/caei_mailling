@@ -7,6 +7,8 @@ use App\Models\Contact;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Jobs\SendCampaignEmailJob;
+use App\Models\EmailLog;
 class CampaignController extends Controller
 {
     public function index()
@@ -123,4 +125,36 @@ class CampaignController extends Controller
 
         return str_replace(array_keys($variables), array_values($variables), $texte);
     }
+
+
+    public function send(Campaign $campaign)
+{
+    if ($campaign->statut !== 'brouillon') {
+        return back()->with('error', 'Cette campagne a déjà été envoyée ou est en cours.');
+    }
+
+    $contacts = $campaign->category_id
+        ? $campaign->category->contacts
+        : Contact::all();
+
+    if ($contacts->isEmpty()) {
+        return back()->with('error', 'Aucun contact à qui envoyer.');
+    }
+
+    foreach ($contacts as $contact) {
+        $emailLog = EmailLog::create([
+            'campaign_id' => $campaign->id,
+            'contact_id' => $contact->id,
+            'status' => 'pending',
+        ]);
+
+        SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)
+            ->onQueue('emails');
+    }
+
+    $campaign->update(['statut' => 'en_cours']);
+
+    return redirect()->route('campaigns.index')
+        ->with('success', "Campagne lancée : {$contacts->count()} emails en file d'attente.");
+}
 }

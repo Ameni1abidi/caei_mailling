@@ -41,10 +41,17 @@
                 </p>
                 <textarea name="contenu" rows="12" required class="border w-full p-2 font-mono text-sm">{{ old('contenu', $campaign->contenu) }}</textarea>
             </div>
-
+            <form action="{{ route('campaigns.send', $campaign) }}" method="POST"
+      onsubmit="return confirm('Envoyer cette campagne à {{ $nbDestinataires }} contact(s) ?')" class="mt-4">
+    @csrf
+    <button type="submit" class="bg-green-600 text-white px-4 py-2">
+        Envoyer maintenant ({{ $nbDestinataires }} destinataires)
+    </button>
+</form>
             <button type="submit" class="bg-blue-600 text-white px-4 py-2 mt-2">Enregistrer</button>
             <a href="{{ route('campaigns.preview', $campaign) }}" class="ml-2 bg-gray-600 text-white px-4 py-2 inline-block">Aperçu</a>
             <a href="{{ route('campaigns.index') }}" class="ml-2">Retour</a>
         </form>
+
     </div>
 </x-app-layout>
