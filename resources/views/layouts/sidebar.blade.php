@@ -4,6 +4,7 @@
         ['label' => 'Contacts', 'route' => 'contacts.index', 'active' => 'contacts.*', 'icon' => 'contacts'],
         ['label' => 'Listes', 'route' => 'categories.index', 'active' => 'categories.*', 'icon' => 'lists'],
         ['label' => 'Campagnes', 'route' => 'campaigns.index', 'active' => 'campaigns.*', 'icon' => 'campaigns'],
+        ['label' => 'Paramètres SMTP', 'route' => 'smtp-settings.index', 'active' => 'smtp-settings.*', 'icon' => 'smtp'],
     ];
 
     $soonLinks = [
@@ -11,7 +12,6 @@
         ['label' => 'Envois', 'icon' => 'send'],
         ['label' => 'Statistiques', 'icon' => 'stats'],
         ['label' => 'Automatisations', 'icon' => 'automation'],
-        ['label' => 'Paramètres SMTP', 'icon' => 'smtp'],
         ['label' => 'Utilisateurs', 'icon' => 'users'],
         ['label' => 'Fichiers & Pièces jointes', 'icon' => 'files'],
         ['label' => 'Paramètres', 'route' => 'profile.edit', 'active' => 'profile.edit', 'icon' => 'settings'],

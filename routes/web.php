@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\SmtpSettingController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -29,6 +30,11 @@ Route::middleware('auth')->group(function () {
     Route::resource('categories', CategoryController::class);
     Route::post('categories/{category}/add-contacts', [CategoryController::class, 'addContacts'])->name('categories.addContacts');
     Route::delete('categories/{category}/remove-contact/{contact}', [CategoryController::class, 'removeContact'])->name('categories.removeContact');
+
+    // Paramètres SMTP
+    Route::resource('smtp-settings', SmtpSettingController::class);
+    Route::post('smtp-settings/{smtp_setting}/test', [SmtpSettingController::class, 'testConnection'])->name('smtp-settings.test');
+    Route::post('smtp-settings/{smtp_setting}/activate', [SmtpSettingController::class, 'activate'])->name('smtp-settings.activate');
 });
 
 
