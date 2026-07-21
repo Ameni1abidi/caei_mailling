@@ -89,7 +89,7 @@ class CampaignController extends Controller
             ? $campaign->category->contacts()
             : Contact::query();
 
-        $contactsDisponibles = $contactsQuery->orderBy('nom')->get(['contacts.id', 'nom', 'prenom', 'email']);
+        $contactsDisponibles = $contactsQuery->orderBy('nom')->get(['contacts.id', 'nom', 'prenom', 'email', 'entreprise', 'fonction', 'pays']);
 
         if ($contactsDisponibles->isEmpty()) {
             return back()->with('error', 'Aucun contact disponible pour la prévisualisation.');
