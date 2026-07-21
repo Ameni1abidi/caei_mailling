@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Jobs\SendCampaignEmailJob;
 use App\Models\EmailLog;
+use App\Models\SmtpSetting;
 class CampaignController extends Controller
 {
     public function index()
@@ -141,7 +142,11 @@ class CampaignController extends Controller
         return back()->with('error', 'Aucun contact à qui envoyer.');
     }
 
-    foreach ($contacts as $contact) {
+    $smtp = SmtpSetting::where('is_active', true)->first();
+    $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
+    $delayBetweenEmails = (int) ceil(60 / $rateLimit);
+
+    foreach ($contacts as $index => $contact) {
         $emailLog = EmailLog::create([
             'campaign_id' => $campaign->id,
             'contact_id' => $contact->id,
@@ -149,6 +154,7 @@ class CampaignController extends Controller
         ]);
 
         SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)
+            ->delay(now()->addSeconds($index * $delayBetweenEmails))
             ->onQueue('emails');
     }
 

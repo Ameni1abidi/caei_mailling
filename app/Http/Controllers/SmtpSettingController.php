@@ -101,7 +101,8 @@ class SmtpSettingController extends Controller
         }
 
         try {
-            $tls = $smtpSetting->encryption === 'tls';
+            // Port 2525 uses STARTTLS; only SSL encryption opens an implicit TLS socket.
+            $tls = $smtpSetting->encryption === 'ssl';
             $transport = new EsmtpTransport(
                 $smtpSetting->host,
                 $smtpSetting->port,
