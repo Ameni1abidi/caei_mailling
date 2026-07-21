@@ -22,10 +22,13 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:categories,name',
             'description' => 'nullable|string',
             'couleur' => 'nullable|string|max:7',
             'icone' => 'nullable|string|max:50',
+        ], [
+            'name.required' => 'Le nom de la liste est obligatoire.',
+            'name.unique' => 'Une liste avec ce nom existe déjà.',
         ]);
 
         Category::create($validated);
@@ -41,25 +44,25 @@ class CategoryController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('nom', 'like', "%{$search}%")
-                  ->orWhere('prenom', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('entreprise', 'like', "%{$search}%");
+                $q->where('contacts.nom', 'like', "%{$search}%")
+                  ->orWhere('contacts.prenom', 'like', "%{$search}%")
+                  ->orWhere('contacts.email', 'like', "%{$search}%")
+                  ->orWhere('contacts.entreprise', 'like', "%{$search}%");
             });
         }
 
         // Filters
         if ($request->filled('pays')) {
-            $query->where('pays', $request->pays);
+            $query->where('contacts.pays', $request->pays);
         }
         if ($request->filled('entreprise')) {
-            $query->where('entreprise', $request->entreprise);
+            $query->where('contacts.entreprise', $request->entreprise);
         }
         if ($request->filled('fonction')) {
-            $query->where('fonction', $request->fonction);
+            $query->where('contacts.fonction', $request->fonction);
         }
         if ($request->filled('secteur_activite')) {
-            $query->where('secteur_activite', $request->secteur_activite);
+            $query->where('contacts.secteur_activite', $request->secteur_activite);
         }
         if ($request->filled('date_from')) {
             $query->whereDate('contacts.created_at', '>=', $request->date_from);
@@ -68,7 +71,7 @@ class CategoryController extends Controller
             $query->whereDate('contacts.created_at', '<=', $request->date_to);
         }
 
-        $contacts = $query->latest()->paginate(25)->withQueryString();
+        $contacts = $query->latest('contacts.created_at')->paginate(25)->withQueryString();
 
         // Get distinct values for filter dropdowns (from contacts in this category)
         $allContacts = $category->contacts;
@@ -95,10 +98,13 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
             'description' => 'nullable|string',
             'couleur' => 'nullable|string|max:7',
             'icone' => 'nullable|string|max:50',
+        ], [
+            'name.required' => 'Le nom de la liste est obligatoire.',
+            'name.unique' => 'Une liste avec ce nom existe déjà.',
         ]);
 
         $category->update($validated);
@@ -116,8 +122,11 @@ class CategoryController extends Controller
     public function addContacts(Request $request, Category $category)
     {
         $request->validate([
-            'contacts' => 'required|array',
+            'contacts' => 'required|array|min:1',
             'contacts.*' => 'exists:contacts,id',
+        ], [
+            'contacts.required' => 'Veuillez sélectionner au moins un contact.',
+            'contacts.min' => 'Veuillez sélectionner au moins un contact.',
         ]);
 
         $category->contacts()->syncWithoutDetaching($request->contacts);
@@ -131,3 +140,4 @@ class CategoryController extends Controller
         return redirect()->route('categories.show', $category)->with('success', 'Contact retiré de la liste.');
     }
 }
+
