@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contact;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use App\Imports\ContactsImport;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -12,7 +13,8 @@ class ContactController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Contact::query();
+        $hasStatusColumn = Schema::hasColumn('contacts', 'status');
+        $query = Contact::query()->with('categories');
 
         // Filtres
         if ($request->filled('pays')) {
@@ -21,6 +23,14 @@ class ContactController extends Controller
         if ($request->filled('secteur_activite')) {
             $query->where('secteur_activite', $request->secteur_activite);
         }
+        $categoryFilter = $request->input('category_id', $request->input('categorie'));
+        if ($categoryFilter) {
+            $query->whereHas('categories', function ($q) use ($categoryFilter) {
+                $q->where('categories.id', $categoryFilter);
+            });
+        }
+        if ($hasStatusColumn && $request->filled('status')) {
+            $query->where('status', $request->status);
         if ($request->filled('categorie')) {
             $query->whereHas('categories', function ($q) use ($request) {
                 $q->where('categories.id', $request->categorie);
@@ -35,6 +45,27 @@ class ContactController extends Controller
             });
         }
 
+        $contacts = $query->latest()->paginate(25)->withQueryString();
+        $categories = Category::withCount('contacts')->orderBy('name')->get(['id', 'name']);
+        $paysOptions = Contact::whereNotNull('pays')
+            ->where('pays', '!=', '')
+            ->distinct()
+            ->orderBy('pays')
+            ->pluck('pays');
+        $secteurOptions = Contact::whereNotNull('secteur_activite')
+            ->where('secteur_activite', '!=', '')
+            ->distinct()
+            ->orderBy('secteur_activite')
+            ->pluck('secteur_activite');
+        $statusOptions = $hasStatusColumn
+            ? Contact::whereNotNull('status')
+                ->where('status', '!=', '')
+                ->distinct()
+                ->orderBy('status')
+                ->pluck('status')
+            : collect();
+
+        return view('contacts.index', compact('contacts', 'categories', 'paysOptions', 'secteurOptions', 'statusOptions', 'hasStatusColumn'));
         $contacts = $query->latest()->paginate(25);
 
         $categories = Category::withCount('contacts')->get();
@@ -66,6 +97,12 @@ class ContactController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        $categoryIds = $validated['categories'] ?? [];
+        unset($validated['categories']);
+
+        $contact = Contact::create($validated);
+        if ($categoryIds) {
+            $contact->categories()->sync($categoryIds);
         $contact = Contact::create($validated);
         if ($request->has('categories')) {
             $contact->categories()->sync($request->categories);
