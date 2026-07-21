@@ -8,6 +8,7 @@ class SmtpSetting extends Model
 {
     protected $fillable = [
         'provider',
+        'driver',
         'host',
         'port',
         'username',
@@ -16,7 +17,9 @@ class SmtpSetting extends Model
         'api_key',
         'sender_name',
         'sender_email',
-        'is_active'
+        'reply_to_email',
+        'rate_limit',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -25,6 +28,8 @@ class SmtpSetting extends Model
             'password' => 'encrypted',
             'api_key' => 'encrypted',
             'is_active' => 'boolean',
+            'port' => 'integer',
+            'rate_limit' => 'integer',
         ];
     }
 }
