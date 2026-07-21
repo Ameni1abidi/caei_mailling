@@ -31,6 +31,10 @@ class ContactController extends Controller
         }
         if ($hasStatusColumn && $request->filled('status')) {
             $query->where('status', $request->status);
+        if ($request->filled('categorie')) {
+            $query->whereHas('categories', function ($q) use ($request) {
+                $q->where('categories.id', $request->categorie);
+            });
         }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -62,6 +66,10 @@ class ContactController extends Controller
             : collect();
 
         return view('contacts.index', compact('contacts', 'categories', 'paysOptions', 'secteurOptions', 'statusOptions', 'hasStatusColumn'));
+        $contacts = $query->latest()->paginate(25);
+
+        $categories = Category::withCount('contacts')->get();
+        return view('contacts.index', compact('contacts', 'categories'));
     }
 
     public function create()
@@ -95,6 +103,9 @@ class ContactController extends Controller
         $contact = Contact::create($validated);
         if ($categoryIds) {
             $contact->categories()->sync($categoryIds);
+        $contact = Contact::create($validated);
+        if ($request->has('categories')) {
+            $contact->categories()->sync($request->categories);
         }
 
         return redirect()->route('contacts.index')->with('success', 'Contact créé avec succès.');
