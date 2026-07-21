@@ -53,7 +53,7 @@
             <div class="mb-2">
                 <label>Contenu de l'email (HTML) *</label>
                 <p class="text-sm text-gray-500">
-                    Variables : @{{Nom}}, @{{Prenom}}, @{{Entreprise}}, @{{Fonction}}, @{{Pays}}
+                    Variables : @{{nom}}, @{{prenom}}, @{{entreprise}}, @{{fonction}}, @{{pays}}, @{{nom_seminaire}}, @{{date}}, @{{lien}}
                 </p>
                 <textarea name="contenu" rows="12" required class="border w-full p-2 font-mono text-sm">{{ old('contenu', $campaign->contenu) }}</textarea>
             </div>
