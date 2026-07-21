@@ -7,11 +7,12 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
-use Maatwebsite\Excel\Concerns\SkipsErrors;
+use Illuminate\Support\Collection;
+use Throwable;
 
 class ContactsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnError
 {
-    use SkipsErrors;
+    private $errors = [];
 
     public function model(array $row)
     {
@@ -43,5 +44,15 @@ class ContactsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
             'prenom' => 'required',
             'email' => 'required|email',
         ];
+    }
+
+    public function onError(Throwable $e)
+    {
+        $this->errors[] = $e;
+    }
+
+    public function errors(): Collection
+    {
+        return collect($this->errors);
     }
 }
