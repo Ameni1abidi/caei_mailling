@@ -23,9 +23,10 @@ class ContactController extends Controller
         if ($request->filled('secteur_activite')) {
             $query->where('secteur_activite', $request->secteur_activite);
         }
-        if ($request->filled('category_id')) {
-            $query->whereHas('categories', function ($q) use ($request) {
-                $q->where('categories.id', $request->category_id);
+        $categoryFilter = $request->input('category_id', $request->input('categorie'));
+        if ($categoryFilter) {
+            $query->whereHas('categories', function ($q) use ($categoryFilter) {
+                $q->where('categories.id', $categoryFilter);
             });
         }
         if ($hasStatusColumn && $request->filled('status')) {
@@ -41,7 +42,7 @@ class ContactController extends Controller
         }
 
         $contacts = $query->latest()->paginate(25)->withQueryString();
-        $categories = Category::orderBy('name')->get(['id', 'name']);
+        $categories = Category::withCount('contacts')->orderBy('name')->get(['id', 'name']);
         $paysOptions = Contact::whereNotNull('pays')
             ->where('pays', '!=', '')
             ->distinct()
@@ -65,7 +66,8 @@ class ContactController extends Controller
 
     public function create()
     {
-        return view('contacts.create');
+        $categories = Category::all();
+        return view('contacts.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -82,18 +84,26 @@ class ContactController extends Controller
             'ville' => 'nullable|string|max:100',
             'secteur_activite' => 'nullable|string|max:255',
             'source' => 'nullable|string|max:255',
-            'categorie' => 'nullable|string|max:255',
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:categories,id',
             'notes' => 'nullable|string',
         ]);
 
-        Contact::create($validated);
+        $categoryIds = $validated['categories'] ?? [];
+        unset($validated['categories']);
+
+        $contact = Contact::create($validated);
+        if ($categoryIds) {
+            $contact->categories()->sync($categoryIds);
+        }
 
         return redirect()->route('contacts.index')->with('success', 'Contact créé avec succès.');
     }
 
     public function edit(Contact $contact)
     {
-        return view('contacts.edit', compact('contact'));
+        $categories = Category::all();
+        return view('contacts.edit', compact('contact', 'categories'));
     }
 
     public function update(Request $request, Contact $contact)
@@ -110,11 +120,13 @@ class ContactController extends Controller
             'ville' => 'nullable|string|max:100',
             'secteur_activite' => 'nullable|string|max:255',
             'source' => 'nullable|string|max:255',
-            'categorie' => 'nullable|string|max:255',
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:categories,id',
             'notes' => 'nullable|string',
         ]);
 
         $contact->update($validated);
+        $contact->categories()->sync($request->categories ?? []);
 
         return redirect()->route('contacts.index')->with('success', 'Contact mis à jour.');
     }
