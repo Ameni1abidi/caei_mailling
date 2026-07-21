@@ -26,7 +26,7 @@
             <p class="text-sm text-gray-500 border-b pb-2 mb-2">
                 <strong>Objet :</strong> {{ $objetPersonnalise }}
             </p>
-            <div>{!! nl2br(e($contenuPersonnalise)) !!}</div>
+            <div>{!! nl2br(\App\Models\EmailTemplate::sanitizeContent($contenuPersonnalise)) !!}</div>
         </div>
 
         <a href="{{ route('campaigns.edit', $campaign) }}" class="mt-4 inline-block">← Retour à l'édition</a>

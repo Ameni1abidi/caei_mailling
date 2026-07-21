@@ -2,52 +2,53 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendCampaignEmailJob;
 use App\Models\Campaign;
-use App\Models\Contact;
 use App\Models\Category;
+use App\Models\Contact;
+use App\Models\EmailLog;
+use App\Models\EmailTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Jobs\SendCampaignEmailJob;
-use App\Models\EmailLog;
+use Illuminate\Validation\ValidationException;
+
 class CampaignController extends Controller
 {
     public function index()
     {
         $campaigns = Campaign::with('category')->latest()->paginate(20);
+
         return view('campaigns.index', compact('campaigns'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        // Liste de toutes les catégories pour le select
         $categories = Category::orderBy('name')->get();
+        $template = null;
 
-        return view('campaigns.create', compact('categories'));
+        if ($request->filled('template_id')) {
+            $template = EmailTemplate::where('is_active', true)->findOrFail($request->template_id);
+        }
+
+        return view('campaigns.create', compact('categories', 'template'));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'nom' => 'required|string|max:255',
-            'objet' => 'required|string|max:255',
-            'contenu' => 'required|string',
-            'category_id' => 'nullable|exists:categories,id',
-        ]);
-
-       $validated['created_by'] = Auth::id();
+        $validated = $this->validatedCampaign($request);
+        $validated['created_by'] = Auth::id();
         $validated['statut'] = 'brouillon';
 
         $campaign = Campaign::create($validated);
 
         return redirect()->route('campaigns.edit', $campaign)
-            ->with('success', 'Campagne créée. Vous pouvez maintenant la prévisualiser.');
+            ->with('success', 'Campagne creee. Vous pouvez maintenant la previsualiser.');
     }
 
     public function edit(Campaign $campaign)
     {
         $categories = Category::orderBy('name')->get();
 
-        // Compte les destinataires ciblés pour affichage
         $nbDestinataires = $campaign->category_id
             ? $campaign->category->contacts()->count()
             : Contact::count();
@@ -57,34 +58,24 @@ class CampaignController extends Controller
 
     public function update(Request $request, Campaign $campaign)
     {
-        $validated = $request->validate([
-            'nom' => 'required|string|max:255',
-            'objet' => 'required|string|max:255',
-            'contenu' => 'required|string',
-            'category_id' => 'nullable|exists:categories,id',
-        ]);
+        $campaign->update($this->validatedCampaign($request));
 
-        $campaign->update($validated);
-
-        return redirect()->route('campaigns.edit', $campaign)->with('success', 'Campagne mise à jour.');
+        return redirect()->route('campaigns.edit', $campaign)->with('success', 'Campagne mise a jour.');
     }
 
     public function destroy(Campaign $campaign)
     {
         if ($campaign->statut !== 'brouillon') {
-            return back()->with('error', 'Impossible de supprimer une campagne déjà envoyée ou en cours.');
+            return back()->with('error', 'Impossible de supprimer une campagne deja envoyee ou en cours.');
         }
 
         $campaign->delete();
-        return redirect()->route('campaigns.index')->with('success', 'Campagne supprimée.');
+
+        return redirect()->route('campaigns.index')->with('success', 'Campagne supprimee.');
     }
 
-    /**
-     * Aperçu personnalisé avec un vrai contact (pour preview avant envoi)
-     */
     public function preview(Campaign $campaign, Request $request)
     {
-        // Liste des contacts ciblés par cette campagne (pour le menu déroulant)
         $contactsQuery = $campaign->category_id
             ? $campaign->category->contacts()
             : Contact::query();
@@ -92,69 +83,107 @@ class CampaignController extends Controller
         $contactsDisponibles = $contactsQuery->orderBy('nom')->get(['contacts.id', 'nom', 'prenom', 'email', 'entreprise', 'fonction', 'pays']);
 
         if ($contactsDisponibles->isEmpty()) {
-            return back()->with('error', 'Aucun contact disponible pour la prévisualisation.');
+            return back()->with('error', 'Aucun contact disponible pour la previsualisation.');
         }
 
-        // Si un contact précis est demandé via ?contact_id=X, on l'utilise
-        if ($request->filled('contact_id')) {
-            $contact = Contact::findOrFail($request->contact_id);
-        } else {
-            $contact = $contactsDisponibles->first();
-        }
+        $contact = $request->filled('contact_id')
+            ? Contact::findOrFail($request->contact_id)
+            : $contactsDisponibles->first();
 
-        $contenuPersonnalise = $this->personnaliser($campaign->contenu, $contact);
-        $objetPersonnalise = $this->personnaliser($campaign->objet, $contact);
+        $context = [
+            'campaign' => $campaign,
+            'nom_seminaire' => $campaign->nom,
+            'date' => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
+        ];
+
+        $contenuPersonnalise = $this->personnaliser($campaign->contenu, $contact, $context);
+        $objetPersonnalise = $this->personnaliser($campaign->objet, $contact, $context);
 
         return view('campaigns.preview', compact(
-            'campaign', 'contact', 'contenuPersonnalise', 'objetPersonnalise', 'contactsDisponibles'
+            'campaign',
+            'contact',
+            'contenuPersonnalise',
+            'objetPersonnalise',
+            'contactsDisponibles'
         ));
     }
 
-    /**
-     * Remplace les variables {{Nom}}, {{Prenom}}, etc. par les valeurs du contact
-     */
-    public static function personnaliser(string $texte, Contact $contact): string
+    public static function personnaliser(string $texte, ?Contact $contact = null, array $extraVariables = []): string
     {
+        $campaign = $extraVariables['campaign'] ?? null;
         $variables = [
-            '{{Nom}}' => $contact->nom,
-            '{{Prenom}}' => $contact->prenom,
-            '{{Entreprise}}' => $contact->entreprise,
-            '{{Fonction}}' => $contact->fonction,
-            '{{Pays}}' => $contact->pays,
+            'nom' => $contact?->nom ?? $extraVariables['nom'] ?? null,
+            'prenom' => $contact?->prenom ?? $extraVariables['prenom'] ?? null,
+            'entreprise' => $contact?->entreprise ?? $extraVariables['entreprise'] ?? null,
+            'fonction' => $contact?->fonction ?? $extraVariables['fonction'] ?? null,
+            'pays' => $contact?->pays ?? $extraVariables['pays'] ?? null,
+            'nom_seminaire' => $extraVariables['nom_seminaire'] ?? $campaign?->nom,
+            'date' => $extraVariables['date'] ?? $campaign?->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
+            'lien' => $extraVariables['lien'] ?? config('app.url'),
         ];
 
-        return str_replace(array_keys($variables), array_values($variables), $texte);
-    }
+        $replacements = [];
+        foreach ($variables as $key => $value) {
+            $value = (string) ($value ?? '');
+            $replacements['{{' . $key . '}}'] = $value;
+            $replacements['{{' . ucfirst($key) . '}}'] = $value;
+            $replacements['{{' . strtoupper($key) . '}}'] = $value;
+        }
 
+        return strtr($texte, $replacements);
+    }
 
     public function send(Campaign $campaign)
-{
-    if ($campaign->statut !== 'brouillon') {
-        return back()->with('error', 'Cette campagne a déjà été envoyée ou est en cours.');
+    {
+        if ($campaign->statut !== 'brouillon') {
+            return back()->with('error', 'Cette campagne a deja ete envoyee ou est en cours.');
+        }
+
+        if (! EmailTemplate::hasValidContent($campaign->contenu)) {
+            return back()->with('error', "Impossible d'envoyer une campagne sans contenu valide.");
+        }
+
+        $contacts = $campaign->category_id
+            ? $campaign->category->contacts
+            : Contact::all();
+
+        if ($contacts->isEmpty()) {
+            return back()->with('error', 'Aucun contact a qui envoyer.');
+        }
+
+        foreach ($contacts as $contact) {
+            $emailLog = EmailLog::create([
+                'campaign_id' => $campaign->id,
+                'contact_id' => $contact->id,
+                'status' => 'pending',
+            ]);
+
+            SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)
+                ->onQueue('emails');
+        }
+
+        $campaign->update(['statut' => 'en_cours']);
+
+        return redirect()->route('campaigns.index')
+            ->with('success', "Campagne lancee : {$contacts->count()} emails en file d'attente.");
     }
 
-    $contacts = $campaign->category_id
-        ? $campaign->category->contacts
-        : Contact::all();
-
-    if ($contacts->isEmpty()) {
-        return back()->with('error', 'Aucun contact à qui envoyer.');
-    }
-
-    foreach ($contacts as $contact) {
-        $emailLog = EmailLog::create([
-            'campaign_id' => $campaign->id,
-            'contact_id' => $contact->id,
-            'status' => 'pending',
+    private function validatedCampaign(Request $request): array
+    {
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'objet' => 'required|string|max:255',
+            'contenu' => 'required|string|min:3',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
-        SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)
-            ->onQueue('emails');
+        $validated['contenu'] = EmailTemplate::sanitizeContent($validated['contenu']);
+        if (! EmailTemplate::hasValidContent($validated['contenu'])) {
+            throw ValidationException::withMessages([
+                'contenu' => 'Le contenu de la campagne doit contenir du texte valide.',
+            ]);
+        }
+
+        return $validated;
     }
-
-    $campaign->update(['statut' => 'en_cours']);
-
-    return redirect()->route('campaigns.index')
-        ->with('success', "Campagne lancée : {$contacts->count()} emails en file d'attente.");
-}
 }
