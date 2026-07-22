@@ -14,16 +14,18 @@
             'route' => 'email-templates.index',
             'active' => 'email-templates.*',
             'icon' => 'templates',
+        ], [
+            'label' => 'Utilisateurs',
+            'route' => 'users.index',
+            'active' => 'users.*',
+            'icon' => 'users',
         ]]);
     }
 
     $soonLinks = [
         ['label' => 'Envois', 'icon' => 'send'],
         ['label' => 'Statistiques', 'icon' => 'stats'],
-        ['label' => 'Automatisations', 'icon' => 'automation'],
-        ['label' => 'Utilisateurs', 'icon' => 'users'],
         ['label' => 'Parametres', 'route' => 'profile.edit', 'active' => 'profile.edit', 'icon' => 'settings'],
-        ['label' => "Journal d'activite", 'icon' => 'journal'],
     ];
 @endphp
 
@@ -34,13 +36,16 @@
         </div>
         <div>
             <div class="text-3xl font-bold leading-none tracking-normal text-white">CAEI</div>
-            <div class="mt-1 text-[10px] font-semibold uppercase tracking-normal text-slate-400">Codicil - Audit - Formation</div>
+            <div class="mt-1 text-[10px] font-semibold uppercase tracking-normal text-slate-400">
+                Codicil - Audit - Formation
+            </div>
         </div>
     </div>
 
     <nav class="flex-1 space-y-1 overflow-y-auto px-4 pb-5">
         @foreach($links as $item)
             @php($isActive = request()->routeIs($item['active']))
+
             <a href="{{ route($item['route']) }}"
                class="{{ $isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/30' : 'text-slate-300 hover:bg-white/10 hover:text-white' }} group flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition">
                 @include('layouts.sidebar-icon', ['name' => $item['icon']])
@@ -51,6 +56,7 @@
         @foreach($soonLinks as $item)
             @if(isset($item['route']))
                 @php($isActive = request()->routeIs($item['active']))
+
                 <a href="{{ route($item['route']) }}"
                    class="{{ $isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/30' : 'text-slate-300 hover:bg-white/10 hover:text-white' }} group flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition">
                     @include('layouts.sidebar-icon', ['name' => $item['icon']])
@@ -59,7 +65,7 @@
             @else
                 <button type="button"
                         disabled
-                        title="Bientot disponible"
+                        title="Bientôt disponible"
                         class="group flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-500 opacity-70">
                     @include('layouts.sidebar-icon', ['name' => $item['icon']])
                     <span>{{ $item['label'] }}</span>
@@ -70,13 +76,19 @@
 
     <div class="border-t border-white/10 p-4">
         <div class="mb-3 min-w-0">
-            <div class="truncate text-sm font-semibold text-white">{{ Auth::user()->name }}</div>
-            <div class="truncate text-xs text-slate-400">{{ Auth::user()->email }}</div>
+            <div class="truncate text-sm font-semibold text-white">
+                {{ Auth::user()->name }}
+            </div>
+            <div class="truncate text-xs text-slate-400">
+                {{ Auth::user()->email }}
+            </div>
         </div>
+
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-            <button type="submit" class="w-full rounded-lg border border-white/10 px-3 py-2 text-left text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">
-                Deconnexion
+            <button type="submit"
+                    class="w-full rounded-lg border border-white/10 px-3 py-2 text-left text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">
+                Déconnexion
             </button>
         </form>
     </div>

@@ -8,6 +8,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\SmtpSettingController;
 use App\Http\Controllers\CampaignAttachmentController;
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -34,6 +35,8 @@ Route::middleware('auth')->group(function () {
     Route::get('attachments/{attachment}/download', [CampaignAttachmentController::class, 'download'])->name('attachments.download');
 
     Route::middleware('role:admin')->group(function () {
+        Route::resource('users', UserController::class)->except(['show']);
+
         Route::post('email-templates/install-defaults', [EmailTemplateController::class, 'installDefaults'])
             ->name('email-templates.install-defaults');
         Route::get('email-templates/{email_template}/preview', [EmailTemplateController::class, 'preview'])
