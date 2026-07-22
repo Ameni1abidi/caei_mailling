@@ -144,4 +144,76 @@ class EmailTemplateController extends Controller
 
         return $validated;
     }
+
+    public function builder(EmailTemplate $emailTemplate)
+    {
+        $variables = EmailTemplate::availableVariables();
+        return view('email-templates.builder', compact('emailTemplate', 'variables'));
+    }
+
+    public function saveBuilder(Request $request, EmailTemplate $emailTemplate)
+    {
+        $validated = $request->validate([
+            'gjs_data' => 'required',
+            'html' => 'required|string',
+        ]);
+
+        $cleanHtml = EmailTemplate::sanitizeContent($validated['html']);
+
+        $emailTemplate->update([
+            'contenu' => $cleanHtml,
+            'gjs_data' => is_string($validated['gjs_data']) ? json_decode($validated['gjs_data'], true) : $validated['gjs_data'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Template sauvegardé avec succès.',
+            'updated_at' => $emailTemplate->updated_at->toIso8601String(),
+        ]);
+    }
+
+    public function uploadImage(Request $request)
+    {
+        if (!$request->hasFile('files')) {
+            return response()->json(['error' => 'Aucun fichier reçu.'], 400);
+        }
+
+        $uploadedUrls = [];
+        $files = $request->file('files');
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        foreach ($files as $file) {
+            if (!$file->isValid()) {
+                return response()->json(['error' => 'Fichier invalide.'], 400);
+            }
+
+            $extension = strtolower($file->getClientOriginalExtension());
+            $isImage = in_array($extension, ['jpeg', 'png', 'jpg', 'gif', 'svg', 'webp']);
+            $isFile = in_array($extension, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', 'txt']);
+
+            if (!$isImage && !$isFile) {
+                return response()->json(['error' => 'Type de fichier non autorisé. Formats autorisés : Images (JPG, PNG, GIF, SVG, WEBP) et Documents (PDF, DOCX, XLSX, PPTX, ZIP, TXT).'], 422);
+            }
+
+            if ($isImage) {
+                if ($file->getSize() > 5 * 1024 * 1024) {
+                    return response()->json(['error' => 'L\'image dépasse la taille maximale autorisée de 5 Mo.'], 422);
+                }
+            } else {
+                if ($file->getSize() > 15 * 1024 * 1024) {
+                    return response()->json(['error' => 'Le document dépasse la taille maximale autorisée de 15 Mo.'], 422);
+                }
+            }
+
+            $path = $file->store('templates', 'public');
+            $url = asset('storage/' . $path);
+            $uploadedUrls[] = $url;
+        }
+
+        return response()->json([
+            'data' => $uploadedUrls
+        ]);
+    }
 }

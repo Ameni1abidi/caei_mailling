@@ -16,12 +16,13 @@ class EmailTemplate extends Model
         'relance' => 'Relance',
     ];
 
-    protected $fillable = ['nom', 'sujet', 'type', 'contenu', 'is_active'];
+    protected $fillable = ['nom', 'sujet', 'type', 'contenu', 'gjs_data', 'is_active'];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'gjs_data' => 'array',
         ];
     }
 

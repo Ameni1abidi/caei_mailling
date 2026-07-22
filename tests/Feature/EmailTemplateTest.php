@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class EmailTemplateTest extends TestCase
 {
@@ -146,5 +148,109 @@ class EmailTemplateTest extends TestCase
             ->get(route('campaigns.create', ['template_id' => $template->id]));
 
         $response->assertNotFound();
+    }
+
+    public function test_admin_can_access_builder_page(): void
+    {
+        $template = EmailTemplate::create([
+            'nom' => 'Builder Test',
+            'sujet' => 'Test',
+            'type' => 'newsletter',
+            'contenu' => 'Bonjour {{prenom}}',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('email-templates.builder', $template));
+
+        $response->assertStatus(200);
+        $response->assertSee('Email Builder');
+    }
+
+    public function test_admin_can_save_builder_data(): void
+    {
+        $template = EmailTemplate::create([
+            'nom' => 'Builder Test',
+            'sujet' => 'Test',
+            'type' => 'newsletter',
+            'contenu' => 'Bonjour {{prenom}}',
+            'is_active' => true,
+        ]);
+
+        $gjsData = ['components' => [['type' => 'text', 'content' => 'Hello Visual']]];
+
+        $response = $this->actingAs($this->admin)
+            ->postJson(route('email-templates.builder.save', $template), [
+                'gjs_data' => $gjsData,
+                'html' => '<div>Hello Visual</div>',
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+
+        $template->refresh();
+        $this->assertEquals('<div>Hello Visual</div>', $template->contenu);
+        $this->assertEquals($gjsData, $template->gjs_data);
+    }
+
+    public function test_admin_can_upload_image(): void
+    {
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->image('test_logo.png', 100, 100);
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('email-templates.upload-image'), [
+                'files' => [$file],
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['data']);
+
+        $uploadedUrl = $response->json('data.0');
+        $this->assertNotNull($uploadedUrl);
+
+        $relativePath = str_replace(asset('storage/'), '', $uploadedUrl);
+        Storage::disk('public')->assertExists($relativePath);
+    }
+
+    public function test_image_upload_fails_for_invalid_mime(): void
+    {
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->create('test.exe', 100, 'application/octet-stream');
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('email-templates.upload-image'), [
+                'files' => [$file],
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonStructure(['error']);
+    }
+
+    public function test_xss_protection_removes_malicious_scripts_from_builder_html(): void
+    {
+        $template = EmailTemplate::create([
+            'nom' => 'XSS Test',
+            'sujet' => 'Test',
+            'type' => 'newsletter',
+            'contenu' => 'Bonjour',
+            'is_active' => true,
+        ]);
+
+        $maliciousHtml = '<div>Bonjour <script>alert("XSS")</script></div>';
+        $gjsData = ['components' => []];
+
+        $response = $this->actingAs($this->admin)
+            ->postJson(route('email-templates.builder.save', $template), [
+                'gjs_data' => $gjsData,
+                'html' => $maliciousHtml,
+            ]);
+
+        $response->assertStatus(200);
+        $template->refresh();
+        $this->assertStringNotContainsString('<script>', $template->contenu);
+        $this->assertStringContainsString('<div>Bonjour </div>', $template->contenu);
     }
 }
