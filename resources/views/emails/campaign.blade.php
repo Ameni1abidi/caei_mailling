@@ -9,5 +9,8 @@
             Vous recevez cet email car vous êtes enregistré dans la base de contacts CAEI.
         </p>
     </div>
+    @if(isset($emailLogId) && $emailLogId)
+        <img src="{{ route('track.open', ['log_id' => $emailLogId]) }}" width="1" height="1" style="display:none;" alt="" />
+    @endif
 </body>
 </html>
