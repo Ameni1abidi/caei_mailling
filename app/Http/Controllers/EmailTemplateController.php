@@ -30,7 +30,14 @@ class EmailTemplateController extends Controller
 
         $types = EmailTemplate::TYPES;
 
-        return view('email-templates.index', compact('templates', 'types'));
+        $stats = [
+            'total' => EmailTemplate::count(),
+            'active' => EmailTemplate::where('is_active', true)->count(),
+            'newsletter' => EmailTemplate::where('type', 'newsletter')->count(),
+            'promotion' => EmailTemplate::where('type', 'promotion')->count(),
+        ];
+
+        return view('email-templates.index', compact('templates', 'types', 'stats'));
     }
 
     public function create()
@@ -83,6 +90,15 @@ class EmailTemplateController extends Controller
         $emailTemplate->update(['is_active' => ! $emailTemplate->is_active]);
 
         return redirect()->route('email-templates.index')->with('success', 'Statut du template mis a jour.');
+    }
+
+    public function duplicate(EmailTemplate $emailTemplate)
+    {
+        $copy = $emailTemplate->replicate();
+        $copy->nom = $emailTemplate->nom . ' (Copie)';
+        $copy->save();
+
+        return redirect()->route('email-templates.index')->with('success', 'Template dupliqué avec succès.');
     }
 
     public function installDefaults()

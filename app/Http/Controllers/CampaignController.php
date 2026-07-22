@@ -48,6 +48,7 @@ class CampaignController extends Controller
 
     public function edit(Campaign $campaign)
     {
+        $campaign->load('attachments');
         $categories = Category::orderBy('name')->get();
 
         $nbDestinataires = $campaign->category_id
@@ -77,6 +78,7 @@ class CampaignController extends Controller
 
     public function preview(Campaign $campaign, Request $request)
     {
+        $campaign->load('attachments');
         $contactsQuery = $campaign->category_id
             ? $campaign->category->contacts()
             : Contact::query();

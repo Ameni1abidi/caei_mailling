@@ -9,6 +9,8 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
+use Illuminate\Support\Facades\Storage;
+
 class CampaignMail extends Mailable
 {
     use Queueable, SerializesModels;
@@ -34,7 +36,17 @@ class CampaignMail extends Mailable
 
     public function build()
     {
-        return $this->subject($this->objetPersonnalise)
+        $mail = $this->subject($this->objetPersonnalise)
             ->view('emails.campaign');
+
+        foreach ($this->campaign->attachments as $attachment) {
+            if ($attachment->file_path && Storage::disk('public')->exists($attachment->file_path)) {
+                $mail->attachFromStorageDisk('public', $attachment->file_path, $attachment->file_name, [
+                    'mime' => $attachment->mime_type,
+                ]);
+            }
+        }
+
+        return $mail;
     }
 }

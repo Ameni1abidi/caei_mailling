@@ -4,6 +4,7 @@
         ['label' => 'Contacts', 'route' => 'contacts.index', 'active' => 'contacts.*', 'icon' => 'contacts'],
         ['label' => 'Listes', 'route' => 'categories.index', 'active' => 'categories.*', 'icon' => 'lists'],
         ['label' => 'Campagnes', 'route' => 'campaigns.index', 'active' => 'campaigns.*', 'icon' => 'campaigns'],
+        ['label' => 'Pièces jointes', 'route' => 'attachments.index', 'active' => 'attachments.*', 'icon' => 'files'],
         ['label' => 'Parametres SMTP', 'route' => 'smtp-settings.index', 'active' => 'smtp-settings.*', 'icon' => 'smtp'],
     ];
 
@@ -21,7 +22,6 @@
         ['label' => 'Statistiques', 'icon' => 'stats'],
         ['label' => 'Automatisations', 'icon' => 'automation'],
         ['label' => 'Utilisateurs', 'icon' => 'users'],
-        ['label' => 'Fichiers & Pieces jointes', 'icon' => 'files'],
         ['label' => 'Parametres', 'route' => 'profile.edit', 'active' => 'profile.edit', 'icon' => 'settings'],
         ['label' => "Journal d'activite", 'icon' => 'journal'],
     ];

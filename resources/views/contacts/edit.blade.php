@@ -1,88 +1,44 @@
 <x-app-layout>
-    <div class="p-6">
-        <h1 class="text-xl font-bold mb-4">Modifier le contact</h1>
-
-        @if($errors->any())
-            <div class="bg-red-100 text-red-800 p-2 mb-4">
-                <ul>
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
+    <div class="p-6 max-w-7xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+            <div class="flex items-center gap-4">
+                <div class="p-3.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl shadow-md shadow-amber-100">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Modifier : {{ $contact->prenom }} {{ $contact->nom }}</h1>
+                    <p class="text-sm text-slate-500 mt-0.5">Mettez à jour la fiche contact et l'attribution aux listes de diffusion</p>
+                </div>
             </div>
-        @endif
+            <a href="{{ route('contacts.index') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl border border-slate-200 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                <span>Retour à la liste</span>
+            </a>
+        </div>
 
+        <!-- Form Card -->
         <form action="{{ route('contacts.update', $contact) }}" method="POST">
             @csrf
             @method('PUT')
 
-            <div class="mb-2">
-                <label>Nom *</label>
-                <input type="text" name="nom" value="{{ old('nom', $contact->nom) }}" required class="border w-full p-1">
-            </div>
+            @include('contacts._form', ['contact' => $contact])
 
-            <div class="mb-2">
-                <label>Prénom *</label>
-                <input type="text" name="prenom" value="{{ old('prenom', $contact->prenom) }}" required class="border w-full p-1">
+            <div class="flex items-center justify-end gap-3 pt-6 mt-6 border-t border-slate-200/80 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                <a href="{{ route('contacts.index') }}" class="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-900 transition">
+                    Annuler
+                </a>
+                <button type="submit" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-md shadow-indigo-100 transition duration-150">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span>Mettre à jour</span>
+                </button>
             </div>
-
-            <div class="mb-2">
-                <label>Email *</label>
-                <input type="email" name="email" value="{{ old('email', $contact->email) }}" required class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Entreprise</label>
-                <input type="text" name="entreprise" value="{{ old('entreprise', $contact->entreprise) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Fonction</label>
-                <input type="text" name="fonction" value="{{ old('fonction', $contact->fonction) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Téléphone</label>
-                <input type="text" name="telephone" value="{{ old('telephone', $contact->telephone) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>WhatsApp</label>
-                <input type="text" name="whatsapp" value="{{ old('whatsapp', $contact->whatsapp) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Pays</label>
-                <input type="text" name="pays" value="{{ old('pays', $contact->pays) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Ville</label>
-                <input type="text" name="ville" value="{{ old('ville', $contact->ville) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Secteur d'activité</label>
-                <input type="text" name="secteur_activite" value="{{ old('secteur_activite', $contact->secteur_activite) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Source du contact</label>
-                <input type="text" name="source" value="{{ old('source', $contact->source) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Catégorie / Liste</label>
-                <input type="text" name="categorie" value="{{ old('categorie', $contact->categorie) }}" class="border w-full p-1">
-            </div>
-
-            <div class="mb-2">
-                <label>Notes</label>
-                <textarea name="notes" class="border w-full p-1">{{ old('notes', $contact->notes) }}</textarea>
-            </div>
-
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 mt-2">Mettre à jour</button>
-            <a href="{{ route('contacts.index') }}" class="ml-2">Annuler</a>
         </form>
     </div>
 </x-app-layout>

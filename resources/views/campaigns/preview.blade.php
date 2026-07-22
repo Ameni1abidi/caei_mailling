@@ -26,7 +26,21 @@
             <p class="text-sm text-gray-500 border-b pb-2 mb-2">
                 <strong>Objet :</strong> {{ $objetPersonnalise }}
             </p>
-            <div>{!! nl2br(\App\Models\EmailTemplate::sanitizeContent($contenuPersonnalise)) !!}</div>
+            <div class="mb-4">{!! nl2br(\App\Models\EmailTemplate::sanitizeContent($contenuPersonnalise)) !!}</div>
+
+            @if($campaign->attachments->isNotEmpty())
+                <div class="border-t pt-3 mt-4">
+                    <p class="text-xs font-semibold text-gray-500 mb-2">📎 Pièces jointes à l'envoi ({{ $campaign->attachments->count() }}) :</p>
+                    <div class="space-y-1">
+                        @foreach($campaign->attachments as $att)
+                            <div class="flex items-center gap-2 text-xs bg-gray-50 p-2 rounded border">
+                                <span class="font-medium text-gray-800">{{ $att->file_name }}</span>
+                                <span class="text-gray-400">({{ $att->typeLabel() }} - {{ $att->file_size ? number_format($att->file_size / 1024, 1) . ' KB' : '' }})</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
         <a href="{{ route('campaigns.edit', $campaign) }}" class="mt-4 inline-block">← Retour à l'édition</a>
