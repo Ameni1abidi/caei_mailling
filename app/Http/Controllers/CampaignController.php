@@ -19,7 +19,14 @@ class CampaignController extends Controller
     {
         $campaigns = Campaign::with('category')->latest()->paginate(20);
 
-        return view('campaigns.index', compact('campaigns'));
+        $stats = [
+            'total' => Campaign::count(),
+            'brouillon' => Campaign::where('statut', 'brouillon')->count(),
+            'en_cours' => Campaign::where('statut', 'en_cours')->count(),
+            'envoyee' => Campaign::where('statut', 'envoyee')->count(),
+        ];
+
+        return view('campaigns.index', compact('campaigns', 'stats'));
     }
 
     public function create(Request $request)

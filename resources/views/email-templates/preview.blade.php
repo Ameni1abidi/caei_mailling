@@ -1,37 +1,5 @@
 <x-app-layout>
-    <div class="p-6 max-w-7xl mx-auto space-y-6" x-data="{
-        device: 'desktop',
-        copiedHtml: false,
-        vars: {
-            @foreach($variables as $name => $value)
-                '{{ $name }}': `{{ addslashes($value) }}`,
-            @endforeach
-        },
-        rawSubject: `{{ addslashes($emailTemplate->sujet ?: $emailTemplate->nom) }}`,
-        rawContent: `{{ addslashes($emailTemplate->contenu) }}`,
-        get renderedSubject() {
-            let res = this.rawSubject;
-            for (const [key, val] of Object.entries(this.vars)) {
-                const reg = new RegExp('\\{\\{\\s*' + key + '\\s*\\}\\}', 'g');
-                res = res.replace(reg, val || '');
-            }
-            return res;
-        },
-        get renderedBody() {
-            let res = this.rawContent;
-            for (const [key, val] of Object.entries(this.vars)) {
-                const reg = new RegExp('\\{\\{\\s*' + key + '\\s*\\}\\}', 'g');
-                res = res.replace(reg, val || '');
-            }
-            return res.replace(/\n/g, '<br>');
-        },
-        copyToClipboard() {
-            navigator.clipboard.writeText(this.rawContent).then(() => {
-                this.copiedHtml = true;
-                setTimeout(() => { this.copiedHtml = false; }, 2500);
-            });
-        }
-    }">
+    <div class="p-6 max-w-7xl mx-auto space-y-6" x-data="templatePreview">
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
             <div class="flex items-center gap-4">
@@ -182,3 +150,49 @@
         </div>
     </div>
 </x-app-layout>
+
+<script>
+    function initTemplatePreview() {
+        if (typeof Alpine !== 'undefined' && !Alpine.data('templatePreview')) {
+            Alpine.data('templatePreview', () => ({
+                device: 'desktop',
+                copiedHtml: false,
+                vars: {
+                    @foreach($variables as $name => $value)
+                        '{{ $name }}': {!! json_encode(e($value), JSON_UNESCAPED_UNICODE) !!},
+                    @endforeach
+                },
+                rawSubject: {!! json_encode(e($emailTemplate->sujet ?: $emailTemplate->nom), JSON_UNESCAPED_UNICODE) !!},
+                rawContent: {!! json_encode(e($emailTemplate->contenu), JSON_UNESCAPED_UNICODE) !!},
+                get renderedSubject() {
+                    let res = this.rawSubject;
+                    for (const [key, val] of Object.entries(this.vars)) {
+                        const reg = new RegExp('\\{\\{\\s*' + key + '\\s*\\}\\}', 'g');
+                        res = res.replace(reg, val || '');
+                    }
+                    return res;
+                },
+                get renderedBody() {
+                    let res = this.rawContent;
+                    for (const [key, val] of Object.entries(this.vars)) {
+                        const reg = new RegExp('\\{\\{\\s*' + key + '\\s*\\}\\}', 'g');
+                        res = res.replace(reg, val || '');
+                    }
+                    return res.replace(/\n/g, '<br>');
+                },
+                copyToClipboard() {
+                    navigator.clipboard.writeText(this.rawContent).then(() => {
+                        this.copiedHtml = true;
+                        setTimeout(() => { this.copiedHtml = false; }, 2500);
+                    });
+                }
+            }));
+        }
+    }
+
+    if (typeof Alpine !== 'undefined') {
+        initTemplatePreview();
+    } else {
+        document.addEventListener('alpine:init', initTemplatePreview);
+    }
+</script>

@@ -20,47 +20,7 @@
     </div>
 @endif
 
-<div x-data="{
-    activeTab: 'edit',
-    content: `{{ old('contenu', $emailTemplate?->contenu ?? '') }}`,
-    copiedToast: false,
-    toastMessage: '',
-    insertVariable(varTag) {
-        const textarea = document.getElementById('contenu');
-        if (textarea) {
-            const start = textarea.selectionStart || 0;
-            const end = textarea.selectionEnd || 0;
-            const text = this.content;
-            this.content = text.substring(0, start) + varTag + text.substring(end);
-            this.$nextTick(() => {
-                textarea.focus();
-                textarea.setSelectionRange(start + varTag.length, start + varTag.length);
-            });
-        } else {
-            this.content += ' ' + varTag;
-        }
-        this.showToast('Variable ' + varTag + ' insérée !');
-    },
-    showToast(msg) {
-        this.toastMessage = msg;
-        this.copiedToast = true;
-        setTimeout(() => { this.copiedToast = false; }, 2500);
-    },
-    get renderedPreview() {
-        if (!this.content) return '<span class=\"text-slate-400 italic\">Aucun contenu à afficher</span>';
-        let rendered = this.content
-            .replace(/\{\{\s*nom\s*\}\}/g, 'Ben Ali')
-            .replace(/\{\{\s*prenom\s*\}\}/g, 'Amel')
-            .replace(/\{\{\s*entreprise\s*\}\}/g, 'CAEI Partner')
-            .replace(/\{\{\s*fonction\s*\}\}/g, 'Directrice Formation')
-            .replace(/\{\{\s*pays\s*\}\}/g, 'Tunisie')
-            .replace(/\{\{\s*nom_seminaire\s*\}\}/g, 'Séminaire Audit & Gouvernance')
-            .replace(/\{\{\s*date\s*\}\}/g, '30/07/2026')
-            .replace(/\{\{\s*lien\s*\}\}/g, 'https://caei.org');
-
-        return rendered.replace(/\n/g, '<br>');
-    }
-}" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div x-data="templateForm" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     <!-- Main Form Controls (2 cols) -->
     <div class="lg:col-span-2 space-y-6">
@@ -70,7 +30,15 @@
                 <label for="nom" class="block text-sm font-bold text-slate-800 mb-1.5">
                     Nom du template <span class="text-rose-500">*</span>
                 </label>
-                <input type="text" name="nom" id="nom" value="{{ old('nom', $emailTemplate?->nom ?? '') }}" required placeholder="Ex: Invitation au Séminaire CAEI 2026" class="w-full text-sm py-2.5 px-3.5 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50">
+                <input type="text" name="nom" id="nom" value="{{ old('nom', $emailTemplate?->nom ?? '') }}" required placeholder="Ex: Invitation au Séminaire CAEI 2026" class="w-full text-sm py-2.5 px-3.5 rounded-xl bg-slate-50/50 border @error('nom') border-rose-300 focus:ring-rose-500 focus:border-rose-500 @else border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @enderror transition-all">
+                @error('nom')
+                    <p class="text-xs text-rose-600 mt-1.5 font-semibold flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ $message }}</span>
+                    </p>
+                @enderror
             </div>
 
             <!-- Objet par défaut -->
@@ -78,23 +46,38 @@
                 <label for="sujet" class="block text-sm font-bold text-slate-800 mb-1.5">
                     Objet de l'email
                 </label>
-                <input type="text" name="sujet" id="sujet" value="{{ old('sujet', $emailTemplate?->sujet ?? '') }}" placeholder="Ex: Invitation : {{nom_seminaire}} pour {{entreprise}}" class="w-full text-sm py-2.5 px-3.5 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50">
+                <input type="text" name="sujet" id="sujet" value="{{ old('sujet', $emailTemplate?->sujet ?? '') }}" placeholder="Ex: Invitation : @{{nom_seminaire}} pour @{{entreprise}}" class="w-full text-sm py-2.5 px-3.5 rounded-xl bg-slate-50/50 border @error('sujet') border-rose-300 focus:ring-rose-500 focus:border-rose-500 @else border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @enderror transition-all">
                 <p class="text-xs text-slate-400 mt-1">L'objet prend en charge les variables dynamiques (ex: <code>@{{nom_seminaire}}</code>)</p>
+                @error('sujet')
+                    <p class="text-xs text-rose-600 mt-1.5 font-semibold flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ $message }}</span>
+                    </p>
+                @enderror
             </div>
 
-            <!-- Type & Actif -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <div>
                     <label for="type" class="block text-sm font-bold text-slate-800 mb-1.5">
                         Type de template <span class="text-rose-500">*</span>
                     </label>
-                    <select name="type" id="type" required class="w-full text-sm py-2.5 px-3.5 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 font-medium text-slate-700">
+                    <select name="type" id="type" required class="w-full text-sm py-2.5 px-3.5 rounded-xl bg-slate-50/50 font-medium text-slate-700 border @error('type') border-rose-300 focus:ring-rose-500 focus:border-rose-500 @else border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @enderror transition-all">
                         @foreach($types as $value => $label)
                             <option value="{{ $value }}" {{ old('type', $emailTemplate?->type ?? 'newsletter') === $value ? 'selected' : '' }}>
                                 {{ $label }}
                             </option>
                         @endforeach
                     </select>
+                    @error('type')
+                        <p class="text-xs text-rose-600 mt-1.5 font-semibold flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
                 </div>
 
                 <div class="flex items-center sm:pt-6">
@@ -132,11 +115,19 @@
 
                 <!-- Textarea Editor -->
                 <div x-show="activeTab === 'edit'" class="space-y-2">
-                    <textarea name="contenu" id="contenu" x-model="content" rows="13" required placeholder="Rédigez le texte ou le HTML de votre modèle d'email..." class="w-full text-sm border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono bg-slate-50/40 p-4 leading-relaxed"></textarea>
+                    <textarea name="contenu" id="contenu" x-model="content" rows="13" required placeholder="Rédigez le texte ou le HTML de votre modèle d'email..." class="w-full text-sm font-mono bg-slate-50/40 p-4 leading-relaxed rounded-xl border @error('contenu') border-rose-300 focus:ring-rose-500 focus:border-rose-500 @else border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @enderror transition-all"></textarea>
                     <div class="flex items-center justify-between text-xs text-slate-400">
                         <span>Formats supportés : Texte brut, HTML basique</span>
                         <span x-text="content.length + ' caractères'"></span>
                     </div>
+                    @error('contenu')
+                        <p class="text-xs text-rose-600 mt-1.5 font-semibold flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
                 </div>
 
                 <!-- Live Preview Tab -->
@@ -200,3 +191,57 @@
         </div>
     </div>
 </div>
+
+<script>
+    function initTemplateForm() {
+        if (typeof Alpine !== 'undefined' && !Alpine.data('templateForm')) {
+            Alpine.data('templateForm', () => ({
+                activeTab: 'edit',
+                content: {!! json_encode(old('contenu', $emailTemplate?->contenu ?? ''), JSON_UNESCAPED_UNICODE) !!},
+                copiedToast: false,
+                toastMessage: '',
+                insertVariable(varTag) {
+                    const textarea = document.getElementById('contenu');
+                    if (textarea) {
+                        const start = textarea.selectionStart || 0;
+                        const end = textarea.selectionEnd || 0;
+                        const text = this.content;
+                        this.content = text.substring(0, start) + varTag + text.substring(end);
+                        this.$nextTick(() => {
+                            textarea.focus();
+                            textarea.setSelectionRange(start + varTag.length, start + varTag.length);
+                        });
+                    } else {
+                        this.content += ' ' + varTag;
+                    }
+                    this.showToast('Variable ' + varTag + ' insérée !');
+                },
+                showToast(msg) {
+                    this.toastMessage = msg;
+                    this.copiedToast = true;
+                    setTimeout(() => { this.copiedToast = false; }, 2500);
+                },
+                get renderedPreview() {
+                    if (!this.content) return '<span class="text-slate-400 italic">Aucun contenu à afficher</span>';
+                    let rendered = this.content
+                        .replace(/\{\{\s*nom\s*\}\}/g, 'Ben Ali')
+                        .replace(/\{\{\s*prenom\s*\}\}/g, 'Amel')
+                        .replace(/\{\{\s*entreprise\s*\}\}/g, 'CAEI Partner')
+                        .replace(/\{\{\s*fonction\s*\}\}/g, 'Directrice Formation')
+                        .replace(/\{\{\s*pays\s*\}\}/g, 'Tunisie')
+                        .replace(/\{\{\s*nom_seminaire\s*\}\}/g, 'Séminaire Audit & Gouvernance')
+                        .replace(/\{\{\s*date\s*\}\}/g, '30/07/2026')
+                        .replace(/\{\{\s*lien\s*\}\}/g, 'https://caei.org');
+
+                    return rendered.replace(/\n/g, '<br>');
+                }
+            }));
+        }
+    }
+
+    if (typeof Alpine !== 'undefined') {
+        initTemplateForm();
+    } else {
+        document.addEventListener('alpine:init', initTemplateForm);
+    }
+</script>
