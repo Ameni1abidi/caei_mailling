@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Campaign;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\EmailLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -102,5 +103,58 @@ class CampaignTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Bonjour Kouassi');
         $response->assertSee('Cher Jean de Banque Nationale');
+    }
+
+    public function test_campaign_is_marked_sent_when_all_email_logs_are_sent(): void
+    {
+        $contact = Contact::create([
+            'nom' => 'Kouassi',
+            'prenom' => 'Jean',
+            'email' => 'jean.kouassi@example.com',
+        ]);
+
+        $campaign = Campaign::create([
+            'nom' => 'Campagne terminee',
+            'objet' => 'Invitation',
+            'contenu' => 'Bonjour',
+            'statut' => 'en_cours',
+            'created_by' => $this->user->id,
+        ]);
+
+        EmailLog::create([
+            'campaign_id' => $campaign->id,
+            'contact_id' => $contact->id,
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        $this->assertTrue($campaign->markAsSentIfAllEmailsAreSent());
+        $this->assertSame('envoyee', $campaign->refresh()->statut);
+    }
+
+    public function test_campaign_stays_in_progress_while_an_email_is_pending(): void
+    {
+        $contact = Contact::create([
+            'nom' => 'Diallo',
+            'prenom' => 'Awa',
+            'email' => 'awa.diallo@example.com',
+        ]);
+
+        $campaign = Campaign::create([
+            'nom' => 'Campagne en attente',
+            'objet' => 'Invitation',
+            'contenu' => 'Bonjour',
+            'statut' => 'en_cours',
+            'created_by' => $this->user->id,
+        ]);
+
+        EmailLog::create([
+            'campaign_id' => $campaign->id,
+            'contact_id' => $contact->id,
+            'status' => 'pending',
+        ]);
+
+        $this->assertFalse($campaign->markAsSentIfAllEmailsAreSent());
+        $this->assertSame('en_cours', $campaign->refresh()->statut);
     }
 }

@@ -66,6 +66,8 @@ class SendCampaignEmailJob implements ShouldQueue
                 'status' => 'sent',
                 'sent_at' => now(),
             ]);
+
+            Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
         } catch (\Exception $e) {
             $emailLog->update([
                 'status' => 'failed',
