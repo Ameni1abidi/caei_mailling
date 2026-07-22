@@ -14,6 +14,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/track/open/{log_id}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
+
 Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
