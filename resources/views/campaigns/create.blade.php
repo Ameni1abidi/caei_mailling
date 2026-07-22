@@ -2,6 +2,12 @@
     <div class="p-6">
         <h1 class="text-xl font-bold mb-4">Nouvelle campagne</h1>
 
+        @if($template)
+            <div class="bg-blue-100 text-blue-800 p-2 mb-4">
+                Template utilise : <strong>{{ $template->nom }}</strong>
+            </div>
+        @endif
+
         @if($errors->any())
             <div class="bg-red-100 text-red-800 p-2 mb-4">
                 <ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
@@ -13,18 +19,18 @@
 
             <div class="mb-2">
                 <label>Nom de la campagne *</label>
-                <input type="text" name="nom" value="{{ old('nom') }}" required class="border w-full p-1"
-                       placeholder="Ex: Séminaire International IA & Fraude">
+                <input type="text" name="nom" value="{{ old('nom', $template?->nom) }}" required class="border w-full p-1"
+                       placeholder="Ex: Seminaire International IA & Fraude">
             </div>
 
             <div class="mb-2">
                 <label>Objet de l'email *</label>
-                <input type="text" name="objet" value="{{ old('objet') }}" required class="border w-full p-1"
-                       placeholder="Ex: Invitation officielle au séminaire international CAEI">
+                <input type="text" name="objet" value="{{ old('objet', $template?->sujet) }}" required class="border w-full p-1"
+                       placeholder="Ex: Invitation officielle au seminaire international CAEI">
             </div>
 
             <div class="mb-2">
-                <label>Liste ciblée</label>
+                <label>Liste ciblee</label>
                 <select name="category_id" class="border w-full p-1">
                     <option value="">-- Tous les contacts --</option>
                     @foreach($categories as $cat)
@@ -36,17 +42,17 @@
             <div class="mb-2">
                 <label>Contenu de l'email (HTML) *</label>
                 <p class="text-sm text-gray-500">
-                    Variables disponibles : @{{Nom}}, @{{Prenom}}, @{{Entreprise}}, @{{Fonction}}, @{{Pays}}
+                    Variables disponibles : @{{nom}}, @{{prenom}}, @{{entreprise}}, @{{fonction}}, @{{pays}}, @{{nom_seminaire}}, @{{date}}, @{{lien}}
                 </p>
-                <textarea name="contenu" rows="12" required class="border w-full p-2 font-mono text-sm">@if(old('contenu')){{ old('contenu') }}@else Bonjour @{{Prenom}} @{{Nom}},
+                <textarea name="contenu" rows="12" required class="border w-full p-2 font-mono text-sm">@if(old('contenu')){{ old('contenu') }}@elseif($template){{ $template->contenu }}@else Bonjour @{{prenom}} @{{nom}},
 
 Nous avons le plaisir de vous inviter...
 
 Cordialement,
-L'équipe CAEI @endif</textarea>
+L'equipe CAEI @endif</textarea>
             </div>
 
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 mt-2">Créer la campagne</button>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 mt-2">Creer la campagne</button>
             <a href="{{ route('campaigns.index') }}" class="ml-2">Annuler</a>
         </form>
     </div>

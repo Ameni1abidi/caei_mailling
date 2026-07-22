@@ -4,18 +4,26 @@
         ['label' => 'Contacts', 'route' => 'contacts.index', 'active' => 'contacts.*', 'icon' => 'contacts'],
         ['label' => 'Listes', 'route' => 'categories.index', 'active' => 'categories.*', 'icon' => 'lists'],
         ['label' => 'Campagnes', 'route' => 'campaigns.index', 'active' => 'campaigns.*', 'icon' => 'campaigns'],
-        ['label' => 'Paramètres SMTP', 'route' => 'smtp-settings.index', 'active' => 'smtp-settings.*', 'icon' => 'smtp'],
+        ['label' => 'Parametres SMTP', 'route' => 'smtp-settings.index', 'active' => 'smtp-settings.*', 'icon' => 'smtp'],
     ];
 
+    if (Auth::user()?->hasRole('admin')) {
+        array_splice($links, 4, 0, [[
+            'label' => 'Templates',
+            'route' => 'email-templates.index',
+            'active' => 'email-templates.*',
+            'icon' => 'templates',
+        ]]);
+    }
+
     $soonLinks = [
-        ['label' => 'Templates', 'icon' => 'templates'],
         ['label' => 'Envois', 'icon' => 'send'],
         ['label' => 'Statistiques', 'icon' => 'stats'],
         ['label' => 'Automatisations', 'icon' => 'automation'],
         ['label' => 'Utilisateurs', 'icon' => 'users'],
-        ['label' => 'Fichiers & Pièces jointes', 'icon' => 'files'],
-        ['label' => 'Paramètres', 'route' => 'profile.edit', 'active' => 'profile.edit', 'icon' => 'settings'],
-        ['label' => "Journal d'activité", 'icon' => 'journal'],
+        ['label' => 'Fichiers & Pieces jointes', 'icon' => 'files'],
+        ['label' => 'Parametres', 'route' => 'profile.edit', 'active' => 'profile.edit', 'icon' => 'settings'],
+        ['label' => "Journal d'activite", 'icon' => 'journal'],
     ];
 @endphp
 
@@ -26,7 +34,7 @@
         </div>
         <div>
             <div class="text-3xl font-bold leading-none tracking-normal text-white">CAEI</div>
-            <div class="mt-1 text-[10px] font-semibold uppercase tracking-normal text-slate-400">Codicil · Audit · Formation</div>
+            <div class="mt-1 text-[10px] font-semibold uppercase tracking-normal text-slate-400">Codicil - Audit - Formation</div>
         </div>
     </div>
 
@@ -51,7 +59,7 @@
             @else
                 <button type="button"
                         disabled
-                        title="Bientôt disponible"
+                        title="Bientot disponible"
                         class="group flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-500 opacity-70">
                     @include('layouts.sidebar-icon', ['name' => $item['icon']])
                     <span>{{ $item['label'] }}</span>
@@ -68,7 +76,7 @@
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit" class="w-full rounded-lg border border-white/10 px-3 py-2 text-left text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">
-                Déconnexion
+                Deconnexion
             </button>
         </form>
     </div>

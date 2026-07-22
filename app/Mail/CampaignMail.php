@@ -22,8 +22,14 @@ class CampaignMail extends Mailable
     {
         $this->campaign = $campaign;
         $this->contact = $contact;
-        $this->contenuPersonnalise = CampaignController::personnaliser($campaign->contenu, $contact);
-        $this->objetPersonnalise = CampaignController::personnaliser($campaign->objet, $contact);
+        $context = [
+            'campaign' => $campaign,
+            'nom_seminaire' => $campaign->nom,
+            'date' => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
+        ];
+
+        $this->contenuPersonnalise = CampaignController::personnaliser($campaign->contenu, $contact, $context);
+        $this->objetPersonnalise = CampaignController::personnaliser($campaign->objet, $contact, $context);
     }
 
     public function build()

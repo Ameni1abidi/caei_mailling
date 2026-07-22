@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\SmtpSettingController;
 
 Route::get('/', function () {
@@ -26,6 +27,16 @@ Route::middleware('auth')->group(function () {
     Route::get('campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('campaigns.preview');
 
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
+
+    Route::middleware('role:admin')->group(function () {
+        Route::post('email-templates/install-defaults', [EmailTemplateController::class, 'installDefaults'])
+            ->name('email-templates.install-defaults');
+        Route::get('email-templates/{email_template}/preview', [EmailTemplateController::class, 'preview'])
+            ->name('email-templates.preview');
+        Route::patch('email-templates/{email_template}/toggle', [EmailTemplateController::class, 'toggle'])
+            ->name('email-templates.toggle');
+        Route::resource('email-templates', EmailTemplateController::class)->except(['show']);
+    });
 
     Route::resource('categories', CategoryController::class);
     Route::post('categories/{category}/add-contacts', [CategoryController::class, 'addContacts'])->name('categories.addContacts');
