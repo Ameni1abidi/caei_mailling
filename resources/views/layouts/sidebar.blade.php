@@ -14,13 +14,17 @@
             'route' => 'email-templates.index',
             'active' => 'email-templates.*',
             'icon' => 'templates',
+        ], [
+            'label' => 'Utilisateurs',
+            'route' => 'users.index',
+            'active' => 'users.*',
+            'icon' => 'users',
         ]]);
     }
 
     $soonLinks = [
         ['label' => 'Envois', 'icon' => 'send'],
         ['label' => 'Statistiques', 'icon' => 'stats'],
-        ['label' => 'Utilisateurs', 'icon' => 'users'],
         ['label' => 'Parametres', 'route' => 'profile.edit', 'active' => 'profile.edit', 'icon' => 'settings'],
     ];
 @endphp
