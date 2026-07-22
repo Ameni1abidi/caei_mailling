@@ -10,8 +10,6 @@ use App\Models\EmailLog;
 use App\Models\EmailTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Jobs\SendCampaignEmailJob;
-use App\Models\EmailLog;
 use App\Models\SmtpSetting;
 use Illuminate\Validation\ValidationException;
 
@@ -150,25 +148,15 @@ class CampaignController extends Controller
             ? $campaign->category->contacts
             : Contact::all();
 
-    $smtp = SmtpSetting::where('is_active', true)->first();
-    $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
-    $delayBetweenEmails = (int) ceil(60 / $rateLimit);
-
-    foreach ($contacts as $index => $contact) {
-        $emailLog = EmailLog::create([
-            'campaign_id' => $campaign->id,
-            'contact_id' => $contact->id,
-            'status' => 'pending',
-        ]);
-
-        SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)
-            ->delay(now()->addSeconds($index * $delayBetweenEmails))
-            ->onQueue('emails');
         if ($contacts->isEmpty()) {
             return back()->with('error', 'Aucun contact a qui envoyer.');
         }
 
-        foreach ($contacts as $contact) {
+        $smtp = SmtpSetting::where('is_active', true)->first();
+        $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
+        $delayBetweenEmails = (int) ceil(60 / $rateLimit);
+
+        foreach ($contacts as $index => $contact) {
             $emailLog = EmailLog::create([
                 'campaign_id' => $campaign->id,
                 'contact_id' => $contact->id,
@@ -176,6 +164,7 @@ class CampaignController extends Controller
             ]);
 
             SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)
+                ->delay(now()->addSeconds($index * $delayBetweenEmails))
                 ->onQueue('emails');
         }
 
@@ -203,5 +192,4 @@ class CampaignController extends Controller
 
         return $validated;
     }
-}
 }
