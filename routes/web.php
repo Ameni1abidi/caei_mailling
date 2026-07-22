@@ -7,6 +7,7 @@ use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\SmtpSettingController;
+use App\Http\Controllers\CampaignAttachmentController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -28,6 +29,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
 
+    // Pièces jointes / Fichiers
+    Route::resource('attachments', CampaignAttachmentController::class);
+    Route::get('attachments/{attachment}/download', [CampaignAttachmentController::class, 'download'])->name('attachments.download');
+
     Route::middleware('role:admin')->group(function () {
         Route::post('email-templates/install-defaults', [EmailTemplateController::class, 'installDefaults'])
             ->name('email-templates.install-defaults');
@@ -35,6 +40,8 @@ Route::middleware('auth')->group(function () {
             ->name('email-templates.preview');
         Route::patch('email-templates/{email_template}/toggle', [EmailTemplateController::class, 'toggle'])
             ->name('email-templates.toggle');
+        Route::post('email-templates/{email_template}/duplicate', [EmailTemplateController::class, 'duplicate'])
+            ->name('email-templates.duplicate');
         Route::resource('email-templates', EmailTemplateController::class)->except(['show']);
     });
 
