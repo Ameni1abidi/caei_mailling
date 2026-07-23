@@ -17,13 +17,15 @@ class CampaignMail extends Mailable
 
     public Campaign $campaign;
     public Contact $contact;
+    public ?int $emailLogId;
     public string $contenuPersonnalise;
     public string $objetPersonnalise;
 
-    public function __construct(Campaign $campaign, Contact $contact)
+    public function __construct(Campaign $campaign, Contact $contact, ?int $emailLogId = null)
     {
         $this->campaign = $campaign;
         $this->contact = $contact;
+        $this->emailLogId = $emailLogId;
         $context = [
             'campaign' => $campaign,
             'nom_seminaire' => $campaign->nom,
@@ -37,7 +39,9 @@ class CampaignMail extends Mailable
     public function build()
     {
         $mail = $this->subject($this->objetPersonnalise)
-            ->view('emails.campaign');
+            ->view('emails.campaign', [
+                'emailLogId' => $this->emailLogId,
+            ]);
 
         foreach ($this->campaign->attachments as $attachment) {
             if ($attachment->file_path && Storage::disk('public')->exists($attachment->file_path)) {
