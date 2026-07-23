@@ -13,6 +13,7 @@ class Campaign extends Model
         'objet',
         'contenu',
         'category_id',
+        'category_ids',
         'date_envoi',
         'statut',
         'created_by'
@@ -22,6 +23,7 @@ class Campaign extends Model
     {
         return [
             'date_envoi' => 'datetime',
+            'category_ids' => 'array',
         ];
     }
 
@@ -31,6 +33,19 @@ class Campaign extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function categoryIds(): array
+    {
+        if (! empty($this->category_ids)) {
+            return array_values(array_filter(array_map('intval', (array) $this->category_ids)));
+        }
+
+        if (! empty($this->category_id)) {
+            return [(int) $this->category_id];
+        }
+
+        return [];
     }
 
     /**

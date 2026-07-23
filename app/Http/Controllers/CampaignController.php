@@ -58,8 +58,11 @@ class CampaignController extends Controller
         $campaign->load('attachments');
         $categories = Category::orderBy('name')->get();
 
-        $nbDestinataires = $campaign->category_id
-            ? $campaign->category->contacts()->count()
+        $categoryIds = $campaign->categoryIds();
+        $nbDestinataires = $categoryIds !== []
+            ? Contact::query()->whereHas('categories', function ($query) use ($categoryIds) {
+                $query->whereIn('categories.id', $categoryIds);
+            })->distinct()->count('contacts.id')
             : Contact::count();
 
         return view('campaigns.edit', compact('campaign', 'categories', 'nbDestinataires'));
@@ -86,8 +89,11 @@ class CampaignController extends Controller
     public function preview(Campaign $campaign, Request $request)
     {
         $campaign->load('attachments');
-        $contactsQuery = $campaign->category_id
-            ? $campaign->category->contacts()
+        $categoryIds = $campaign->categoryIds();
+        $contactsQuery = $categoryIds !== []
+            ? Contact::query()->whereHas('categories', function ($query) use ($categoryIds) {
+                $query->whereIn('categories.id', $categoryIds);
+            })
             : Contact::query();
 
         $contactsDisponibles = $contactsQuery->orderBy('nom')->get(['contacts.id', 'nom', 'prenom', 'email', 'entreprise', 'fonction', 'pays']);
@@ -153,8 +159,11 @@ class CampaignController extends Controller
             return back()->with('error', "Impossible d'envoyer une campagne sans contenu valide.");
         }
 
-        $contacts = $campaign->category_id
-            ? $campaign->category->contacts
+        $categoryIds = $campaign->categoryIds();
+        $contacts = $categoryIds !== []
+            ? Contact::query()->whereHas('categories', function ($query) use ($categoryIds) {
+                $query->whereIn('categories.id', $categoryIds);
+            })->get()
             : Contact::all();
 
         if ($contacts->isEmpty()) {
@@ -190,7 +199,25 @@ class CampaignController extends Controller
             'objet' => 'required|string|max:255',
             'contenu' => 'required|string|min:3',
             'category_id' => 'nullable|exists:categories,id',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'integer|exists:categories,id',
+            'all_contacts' => 'nullable|boolean',
         ]);
+
+        $categoryIds = $request->input('category_ids', []);
+        if (empty($categoryIds) && $request->filled('category_id')) {
+            $categoryIds = [(int) $request->input('category_id')];
+        }
+
+        $categoryIds = array_values(array_unique(array_map('intval', $categoryIds)));
+        $useAllContacts = (bool) $request->boolean('all_contacts');
+
+        if ($useAllContacts) {
+            $categoryIds = [];
+        }
+
+        $validated['category_id'] = $categoryIds !== [] && count($categoryIds) === 1 ? $categoryIds[0] : null;
+        $validated['category_ids'] = $categoryIds;
 
         $validated['contenu'] = EmailTemplate::sanitizeContent($validated['contenu']);
         if (! EmailTemplate::hasValidContent($validated['contenu'])) {
