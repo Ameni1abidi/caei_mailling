@@ -67,6 +67,9 @@ class SendCampaignEmailJob implements ShouldQueue
                 'sent_at' => now(),
             ]);
 
+            // Mettre à jour le statut du prospect à "Email envoyé" si statut initial
+            $this->contact->advanceStatusTo(Contact::STATUS_EMAIL_ENVOYE);
+
             Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
             // Pause d'une seconde pour éviter les limites de Mailtrap (Too many emails per second)
             // Surtout utile si le queue worker essaie de rattraper son retard

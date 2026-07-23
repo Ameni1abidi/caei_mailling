@@ -53,13 +53,7 @@ class ContactController extends Controller
             ->distinct()
             ->orderBy('secteur_activite')
             ->pluck('secteur_activite');
-        $statusOptions = $hasStatusColumn
-            ? Contact::whereNotNull('status')
-                ->where('status', '!=', '')
-                ->distinct()
-                ->orderBy('status')
-                ->pluck('status')
-            : collect();
+        $statusOptions = Contact::getProspectStatuses();
 
         return view('contacts.index', compact('contacts', 'categories', 'paysOptions', 'secteurOptions', 'statusOptions', 'hasStatusColumn'));
     }
@@ -67,7 +61,8 @@ class ContactController extends Controller
     public function create()
     {
         $categories = Category::all();
-        return view('contacts.create', compact('categories'));
+        $statuses = Contact::getProspectStatuses();
+        return view('contacts.create', compact('categories', 'statuses'));
     }
 
     public function store(Request $request)
@@ -84,10 +79,15 @@ class ContactController extends Controller
             'ville' => 'nullable|string|max:100',
             'secteur_activite' => 'nullable|string|max:255',
             'source' => 'nullable|string|max:255',
+            'status' => 'nullable|string|max:100',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
             'notes' => 'nullable|string',
         ]);
+
+        if (empty($validated['status'])) {
+            $validated['status'] = Contact::STATUS_NOUVEAU;
+        }
 
         $categoryIds = $validated['categories'] ?? [];
         unset($validated['categories']);
@@ -103,7 +103,8 @@ class ContactController extends Controller
     public function edit(Contact $contact)
     {
         $categories = Category::all();
-        return view('contacts.edit', compact('contact', 'categories'));
+        $statuses = Contact::getProspectStatuses();
+        return view('contacts.edit', compact('contact', 'categories', 'statuses'));
     }
 
     public function update(Request $request, Contact $contact)
@@ -120,6 +121,7 @@ class ContactController extends Controller
             'ville' => 'nullable|string|max:100',
             'secteur_activite' => 'nullable|string|max:255',
             'source' => 'nullable|string|max:255',
+            'status' => 'nullable|string|max:100',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
             'notes' => 'nullable|string',
