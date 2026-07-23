@@ -93,17 +93,28 @@
 
                         <!-- Cible -->
                         <div>
-                            <label for="category_id" class="block text-sm font-bold text-slate-800 mb-1.5">
-                                Liste ciblée (Catégorie de contacts)
+                            <label class="block text-sm font-bold text-slate-800 mb-1.5">
+                                Ciblage de la campagne
                             </label>
-                            <select name="category_id" id="category_id" class="w-full text-sm py-2.5 px-3.5 rounded-xl bg-slate-50/50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-700">
-                                <option value="">-- Tous les contacts --</option>
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ old('category_id') == $cat->id ? 'selected' : '' }}>
-                                        {{ $cat->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+
+                            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+                                <input type="checkbox" name="all_contacts" value="1" {{ old('all_contacts') ? 'checked' : '' }} class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <span>Tous les contacts</span>
+                            </label>
+
+                            <div class="mt-3">
+                                <label for="category_ids" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                                    Ou choisir plusieurs listes ciblées
+                                </label>
+                                <select name="category_ids[]" id="category_ids" multiple class="w-full min-h-[120px] text-sm py-2.5 px-3.5 rounded-xl bg-slate-50/50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-700">
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat->id }}" {{ in_array((string) $cat->id, old('category_ids', []), true) || (old('category_id') == $cat->id) ? 'selected' : '' }}>
+                                            {{ $cat->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-2 text-xs text-slate-500">Maintenez la touche Ctrl/Cmd pour sélectionner plusieurs listes.</p>
+                            </div>
                         </div>
 
                         <!-- Contenu du message -->

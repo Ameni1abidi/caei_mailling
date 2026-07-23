@@ -50,6 +50,49 @@ class CampaignTest extends TestCase
         $response->assertRedirect(route('campaigns.edit', $campaign));
     }
 
+    public function test_can_create_campaign_with_multiple_target_categories(): void
+    {
+        $firstCategory = Category::create(['name' => 'Assurances']);
+        $secondCategory = Category::create(['name' => 'Banques']);
+
+        $response = $this->actingAs($this->user)
+            ->post(route('campaigns.store'), [
+                'nom' => 'Séminaire multi-cibles',
+                'objet' => 'Invitation',
+                'contenu' => 'Bonjour {{Nom}} {{Prenom}}',
+                'category_ids' => [$firstCategory->id, $secondCategory->id],
+            ]);
+
+        $campaign = Campaign::first();
+
+        $this->assertNotNull($campaign);
+        $this->assertSame([$firstCategory->id, $secondCategory->id], $campaign->fresh()->categoryIds());
+
+        $response->assertRedirect(route('campaigns.edit', $campaign));
+    }
+
+    public function test_can_target_all_contacts_when_selected(): void
+    {
+        $firstCategory = Category::create(['name' => 'Assurances']);
+        $secondCategory = Category::create(['name' => 'Banques']);
+
+        $response = $this->actingAs($this->user)
+            ->post(route('campaigns.store'), [
+                'nom' => 'Campagne tous contacts',
+                'objet' => 'Invitation',
+                'contenu' => 'Bonjour',
+                'all_contacts' => '1',
+                'category_ids' => [$firstCategory->id, $secondCategory->id],
+            ]);
+
+        $campaign = Campaign::first();
+
+        $this->assertNotNull($campaign);
+        $this->assertSame([], $campaign->fresh()->categoryIds());
+
+        $response->assertRedirect(route('campaigns.edit', $campaign));
+    }
+
     public function test_can_update_campaign(): void
     {
         $campaign = Campaign::create([
