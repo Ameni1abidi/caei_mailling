@@ -197,8 +197,8 @@
                                 $initials = strtoupper(substr($contact->prenom ?? '', 0, 1) . substr($contact->nom ?? '', 0, 1));
                                 if (!$initials) $initials = 'CT';
                                 $bgGradient = ['from-blue-500 to-indigo-600', 'from-purple-500 to-pink-600', 'from-emerald-500 to-teal-600', 'from-amber-500 to-orange-600'][abs(crc32($contact->email)) % 4];
-                                $stMeta = \App\Models\Contact::getProspectStatuses()[$contact->status] ?? [
-                                    'label' => $contact->status ?? 'Nouveau prospect',
+                                $stMeta = \App\Models\Contact::getProspectStatuses()[$contact->prospect_status] ?? [
+                                    'label' => $contact->prospect_status ?? 'Nouveau prospect',
                                     'badge' => 'bg-slate-100 text-slate-700 border-slate-200',
                                     'dot' => 'bg-slate-400'
                                 ];

@@ -19,7 +19,7 @@ class ProspectController extends Controller
 
         // Filtre par statut
         if ($request->filled('status') && array_key_exists($request->status, $statuses)) {
-            $query->where('status', $request->status);
+            $query->where('prospect_status', $request->status);
         }
 
         // Filtre par catégorie / liste
@@ -57,9 +57,9 @@ class ProspectController extends Controller
 
         // Calcul des statistiques globales par statut
         $statusCounts = Contact::query()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status')
+            ->selectRaw('prospect_status, count(*) as total')
+            ->groupBy('prospect_status')
+            ->pluck('total', 'prospect_status')
             ->toArray();
 
         $stats = [];
@@ -77,7 +77,7 @@ class ProspectController extends Controller
             // Grouper les prospects par statut pour les colonnes Kanban (limité à 50 par statut pour la performance)
             $kanbanData = [];
             foreach (array_keys($statuses) as $statusKey) {
-                $columnQuery = (clone $query)->where('status', $statusKey);
+                $columnQuery = (clone $query)->where('prospect_status', $statusKey);
                 $kanbanData[$statusKey] = $columnQuery->latest()->take(50)->get();
             }
             $contacts = null;

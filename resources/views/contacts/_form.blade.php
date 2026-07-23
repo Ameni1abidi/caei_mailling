@@ -163,14 +163,14 @@
         </div>
 
         <div>
-            <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label for="prospect_status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Statut du contact
             </label>
             @php
                 $availableStatuses = \App\Models\Contact::getProspectStatuses();
-                $currentStatus = old('status', $contact->status ?? \App\Models\Contact::STATUS_NOUVEAU);
+                $currentStatus = old('prospect_status', $contact->prospect_status ?? \App\Models\Contact::STATUS_NOUVEAU);
             @endphp
-            <select name="status" id="status" class="w-full text-sm py-2.5 px-3.5 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 font-medium">
+            <select name="prospect_status" id="prospect_status" class="w-full text-sm py-2.5 px-3.5 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 font-medium">
                 @foreach($availableStatuses as $stKey => $stMeta)
                     <option value="{{ $stKey }}" {{ $currentStatus === $stKey ? 'selected' : '' }}>
                         {{ $stMeta['label'] }} — {{ $stMeta['description'] }}

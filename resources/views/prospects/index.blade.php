@@ -166,86 +166,276 @@
 
         <!-- Content according to view mode -->
         @if($viewMode === 'kanban')
-            <!-- KANBAN PIPELINE VIEW -->
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 items-start overflow-x-auto pb-4">
-                @foreach($statuses as $statusKey => $meta)
-                    @php
-                        $prospectsInCol = $kanbanData[$statusKey] ?? collect();
-                    @endphp
-                    <div class="bg-slate-100/70 rounded-2xl border border-slate-200/80 p-3 min-w-[260px] flex flex-col max-h-[800px]">
-                        <!-- Column Header -->
-                        <div class="flex items-center justify-between pb-3 px-1 border-b border-slate-200 mb-3">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full {{ $meta['dot'] }}"></span>
-                                <h3 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">{{ $meta['label'] }}</h3>
+            <!-- STATISTICS DASHBOARD VIEW -->
+            <div class="space-y-6">
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                    <!-- Pie / Doughnut Chart: Répartition par statut -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+                                </svg>
                             </div>
-                            <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-white text-slate-700 border border-slate-200">
-                                {{ $prospectsInCol->count() }}
-                            </span>
+                            <div>
+                                <h3 class="text-lg font-extrabold text-slate-900">Répartition par Statut</h3>
+                                <p class="text-xs text-slate-400">Distribution des prospects dans le pipeline</p>
+                            </div>
                         </div>
-
-                        <!-- Column Cards -->
-                        <div class="space-y-3 overflow-y-auto pr-1 flex-1">
-                            @forelse($prospectsInCol as $prospect)
-                                <a href="{{ route('prospects.show', $prospect) }}" class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all group relative block">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div>
-                                            <div class="font-bold text-slate-900 text-sm leading-snug hover:text-indigo-600 transition">
-                                                {{ $prospect->prenom }} {{ $prospect->nom }}
-                                            </div>
-                                            @if($prospect->entreprise)
-                                                <div class="text-xs font-medium text-slate-500 mt-0.5 flex items-center gap-1">
-                                                    <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                                    </svg>
-                                                    {{ $prospect->entreprise }}
-                                                </div>
-                                            @endif
-                                        </div>
-
-                                        <!-- Quick Status Modal Trigger -->
-                                        <button @click.prevent="openStatusModal({{ $prospect->id }}, '{{ addslashes($prospect->prenom . ' ' . $prospect->nom) }}', '{{ $prospect->status }}')"
-                                                class="text-slate-400 hover:text-indigo-600 p-1 rounded-lg hover:bg-slate-100 transition" title="Changer le statut">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-
-                                    <div class="text-xs text-slate-500 truncate mt-2">
-                                        {{ $prospect->email }}
-                                    </div>
-
-                                    <!-- Categories Badges -->
-                                    @if($prospect->categories->isNotEmpty())
-                                        <div class="flex flex-wrap gap-1 mt-2.5">
-                                            @foreach($prospect->categories->take(2) as $cat)
-                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700">
-                                                    {{ $cat->name }}
-                                                </span>
-                                            @endforeach
-                                            @if($prospect->categories->count() > 2)
-                                                <span class="text-[10px] text-slate-400 font-semibold">+{{ $prospect->categories->count() - 2 }}</span>
-                                            @endif
-                                        </div>
-                                    @endif
-
-                                    <!-- Notes snippet if present -->
-                                    @if($prospect->notes)
-                                        <div class="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 italic line-clamp-2" title="{{ $prospect->notes }}">
-                                            "{{ Str::limit($prospect->notes, 60) }}"
-                                        </div>
-                                    @endif
-                                </a>
-                            @empty
-                                <div class="p-6 text-center text-xs font-semibold text-slate-400 border border-dashed border-slate-200 rounded-xl bg-white/50">
-                                    Aucun prospect
-                                </div>
-                            @endforelse
+                        <div class="relative" style="height: 320px;">
+                            <canvas id="statusPieChart"></canvas>
                         </div>
                     </div>
-                @endforeach
+
+                    <!-- Bar Chart: Volume par statut -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2.5 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-xl shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-extrabold text-slate-900">Volume par Étape</h3>
+                                <p class="text-xs text-slate-400">Nombre de prospects à chaque étape du funnel</p>
+                            </div>
+                        </div>
+                        <div class="relative" style="height: 320px;">
+                            <canvas id="statusBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Total -->
+                    <div class="bg-gradient-to-br from-slate-800 to-slate-900 text-white p-5 rounded-2xl shadow-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Total Prospects</span>
+                            <div class="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-4xl font-black tracking-tight">{{ $totalProspects }}</div>
+                    </div>
+
+                    <!-- Taux de conversion (Email envoyé → Ouvert) -->
+                    @php
+                        $envoyeCount = $stats[\App\Models\Contact::STATUS_EMAIL_ENVOYE] ?? 0;
+                        $ouvertCount = $stats[\App\Models\Contact::STATUS_EMAIL_OUVERT] ?? 0;
+                        $interesseCount = $stats[\App\Models\Contact::STATUS_INTERESSE] ?? 0;
+                        $clientCount = $stats[\App\Models\Contact::STATUS_CLIENT] ?? 0;
+                        $tauxOuverture = $envoyeCount > 0 ? round(($ouvertCount / ($envoyeCount + $ouvertCount + $interesseCount + $clientCount)) * 100, 1) : 0;
+                        $tauxConversion = $totalProspects > 0 ? round(($clientCount / $totalProspects) * 100, 1) : 0;
+                        $tauxEngagement = $totalProspects > 0 ? round((($ouvertCount + $interesseCount + $clientCount) / $totalProspects) * 100, 1) : 0;
+                    @endphp
+                    <div class="bg-gradient-to-br from-sky-500 to-blue-600 text-white p-5 rounded-2xl shadow-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-sky-100">Taux d'engagement</span>
+                            <div class="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-4xl font-black tracking-tight">{{ $tauxEngagement }}%</div>
+                        <p class="text-xs text-sky-200 mt-1">Ouvert + Intéressé + Client</p>
+                    </div>
+
+                    <!-- Taux de conversion client -->
+                    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-5 rounded-2xl shadow-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-100">Taux de conversion</span>
+                            <div class="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-4xl font-black tracking-tight">{{ $tauxConversion }}%</div>
+                        <p class="text-xs text-emerald-200 mt-1">Prospects convertis en client</p>
+                    </div>
+
+                    <!-- À relancer -->
+                    <div class="bg-gradient-to-br from-rose-500 to-pink-600 text-white p-5 rounded-2xl shadow-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-rose-100">À relancer</span>
+                            <div class="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-4xl font-black tracking-tight">{{ $stats[\App\Models\Contact::STATUS_A_RELANCER] ?? 0 }}</div>
+                        <p class="text-xs text-rose-200 mt-1">Prospects nécessitant une relance</p>
+                    </div>
+                </div>
+
+                <!-- Funnel Visualization -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-2.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-xl shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-900">Tunnel de Conversion</h3>
+                            <p class="text-xs text-slate-400">Progression visuelle des prospects dans le pipeline</p>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        @php
+                            $funnelSteps = [
+                                ['key' => \App\Models\Contact::STATUS_NOUVEAU, 'color' => 'bg-slate-400', 'barBg' => 'bg-slate-100'],
+                                ['key' => \App\Models\Contact::STATUS_EMAIL_ENVOYE, 'color' => 'bg-blue-500', 'barBg' => 'bg-blue-50'],
+                                ['key' => \App\Models\Contact::STATUS_EMAIL_OUVERT, 'color' => 'bg-indigo-500', 'barBg' => 'bg-indigo-50'],
+                                ['key' => \App\Models\Contact::STATUS_INTERESSE, 'color' => 'bg-amber-500', 'barBg' => 'bg-amber-50'],
+                                ['key' => \App\Models\Contact::STATUS_A_RELANCER, 'color' => 'bg-rose-500', 'barBg' => 'bg-rose-50'],
+                                ['key' => \App\Models\Contact::STATUS_CLIENT, 'color' => 'bg-emerald-500', 'barBg' => 'bg-emerald-50'],
+                            ];
+                            $maxCount = max(1, max(array_values($stats) ?: [1]));
+                        @endphp
+                        @foreach($funnelSteps as $step)
+                            @php
+                                $stepCount = $stats[$step['key']] ?? 0;
+                                $stepPercent = $totalProspects > 0 ? round(($stepCount / $totalProspects) * 100, 1) : 0;
+                                $barWidth = $maxCount > 0 ? round(($stepCount / $maxCount) * 100) : 0;
+                            @endphp
+                            <div class="flex items-center gap-4">
+                                <div class="w-40 shrink-0 flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full {{ $step['color'] }} shrink-0"></span>
+                                    <span class="text-sm font-bold text-slate-700 truncate">{{ $statuses[$step['key']]['label'] }}</span>
+                                </div>
+                                <div class="flex-1 {{ $step['barBg'] }} rounded-full h-8 overflow-hidden relative">
+                                    <div class="{{ $step['color'] }} h-full rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-3"
+                                         style="width: {{ max($barWidth, 2) }}%; min-width: {{ $stepCount > 0 ? '40px' : '0' }}">
+                                        @if($stepCount > 0)
+                                            <span class="text-xs font-black text-white drop-shadow">{{ $stepCount }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="w-14 text-right">
+                                    <span class="text-sm font-bold text-slate-500">{{ $stepPercent }}%</span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
             </div>
+
+            <!-- Chart.js -->
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const labels = {!! json_encode(array_map(fn($s) => $s['label'], $statuses)) !!};
+                const data = {!! json_encode(array_values(array_map(fn($key) => $stats[$key] ?? 0, array_keys($statuses)))) !!};
+                const colors = ['#94a3b8', '#3b82f6', '#6366f1', '#f59e0b', '#f43f5e', '#10b981'];
+
+                // Doughnut Chart
+                new Chart(document.getElementById('statusPieChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: '#ffffff',
+                            borderWidth: 3,
+                            hoverBorderWidth: 0,
+                            hoverOffset: 12
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 16,
+                                    usePointStyle: true,
+                                    pointStyleWidth: 12,
+                                    font: { size: 12, weight: '600', family: "'Inter', 'Figtree', sans-serif" },
+                                    color: '#475569'
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleFont: { size: 13, weight: '700' },
+                                bodyFont: { size: 12 },
+                                padding: 12,
+                                cornerRadius: 10,
+                                callbacks: {
+                                    label: function(ctx) {
+                                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                        const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                                        return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Bar Chart
+                new Chart(document.getElementById('statusBarChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Prospects',
+                            data: data,
+                            backgroundColor: colors.map(c => c + 'cc'),
+                            borderColor: colors,
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            borderSkipped: false,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleFont: { size: 13, weight: '700' },
+                                bodyFont: { size: 12 },
+                                padding: 12,
+                                cornerRadius: 10,
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1,
+                                    font: { size: 11, weight: '600' },
+                                    color: '#94a3b8'
+                                },
+                                grid: { color: '#f1f5f9' }
+                            },
+                            x: {
+                                ticks: {
+                                    font: { size: 10, weight: '700' },
+                                    color: '#64748b',
+                                    maxRotation: 45
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            });
+            </script>
         @else
             <!-- TABLE VIEW -->
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -264,8 +454,8 @@
                         <tbody class="divide-y divide-slate-100 text-sm">
                             @forelse($contacts as $contact)
                                 @php
-                                    $meta = $statuses[$contact->status] ?? [
-                                        'label' => $contact->status ?? 'Inconnu',
+                                    $meta = $statuses[$contact->prospect_status] ?? [
+                                        'label' => $contact->prospect_status ?? 'Inconnu',
                                         'badge' => 'bg-slate-100 text-slate-700 border-slate-200',
                                         'dot' => 'bg-slate-400'
                                     ];
@@ -301,7 +491,7 @@
                                             <select name="status" onchange="this.form.submit()"
                                                     class="py-1 px-2.5 rounded-full text-xs font-bold border transition cursor-pointer focus:ring-2 focus:ring-indigo-500 {{ $meta['badge'] }}">
                                                 @foreach($statuses as $stKey => $stMeta)
-                                                    <option value="{{ $stKey }}" {{ $contact->status === $stKey ? 'selected' : '' }}>
+                                                    <option value="{{ $stKey }}" {{ $contact->prospect_status === $stKey ? 'selected' : '' }}>
                                                         {{ $stMeta['label'] }}
                                                     </option>
                                                 @endforeach
@@ -330,7 +520,7 @@
                                     <!-- Actions -->
                                     <td class="py-3.5 px-4 text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            <button @click="openStatusModal({{ $contact->id }}, '{{ addslashes($contact->prenom . ' ' . $contact->nom) }}', '{{ $contact->status }}')"
+                                            <button @click="openStatusModal({{ $contact->id }}, '{{ addslashes($contact->prenom . ' ' . $contact->nom) }}', '{{ $contact->prospect_status }}')"
                                                     class="px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
                                                 Qualifier / Note
                                             </button>
