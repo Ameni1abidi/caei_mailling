@@ -37,7 +37,7 @@ class UpdateProspectStatusAfterCampaign implements ShouldQueue
 
             if (in_array($log->status, [EmailLog::STATUS_DELIVERED, EmailLog::STATUS_SENT], true)) {
                 // Mettre à jour le statut à "Email envoyé" s'il est en phase initiale
-                if ($contact->status === Contact::STATUS_NOUVEAU) {
+                if ($contact->prospect_status === Contact::STATUS_NOUVEAU) {
                     $contact->updateStatusWithLog(
                         Contact::STATUS_EMAIL_ENVOYE,
                         "Email de la campagne '{$this->campaign->nom}' envoyé"
@@ -61,7 +61,7 @@ class UpdateProspectStatusAfterCampaign implements ShouldQueue
 
             if ($log->opened) {
                 // Mettre à jour le statut à "Email ouvert"
-                if (in_array($contact->status, [Contact::STATUS_NOUVEAU, Contact::STATUS_EMAIL_ENVOYE])) {
+                if (in_array($contact->prospect_status, [Contact::STATUS_NOUVEAU, Contact::STATUS_EMAIL_ENVOYE])) {
                     $contact->updateStatusWithLog(
                         Contact::STATUS_EMAIL_OUVERT,
                         "Email de la campagne '{$this->campaign->nom}' ouvert"

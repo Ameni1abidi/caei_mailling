@@ -21,7 +21,7 @@ class Contact extends Model
         'ville',
         'secteur_activite',
         'source',
-        'status',
+        'prospect_status',
         'unsubscribed_at',
         'bounced_at',
         'notes',
@@ -100,11 +100,11 @@ class Contact extends Model
             self::STATUS_EMAIL_OUVERT => 3,
         ];
 
-        $currentLevel = $hierarchy[$this->status] ?? 99; // If already Intéressé, À relancer, Client -> don't overwrite automatically
+        $currentLevel = $hierarchy[$this->prospect_status] ?? 99; // If already Intéressé, À relancer, Client -> don't overwrite automatically
         $targetLevel = $hierarchy[$targetStatus] ?? 0;
 
         if ($targetLevel > $currentLevel) {
-            $this->update(['status' => $targetStatus]);
+            $this->update(['prospect_status' => $targetStatus]);
         }
     }
 
@@ -195,9 +195,9 @@ class Contact extends Model
      */
     public function updateStatusWithLog(string $newStatus, ?string $note = null): void
     {
-        $oldStatus = $this->status;
+        $oldStatus = $this->prospect_status;
         
-        $this->update(['status' => $newStatus]);
+        $this->update(['prospect_status' => $newStatus]);
         
         // Log interaction
         $description = $note ?? "Changement de statut: {$oldStatus} → {$newStatus}";

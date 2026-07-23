@@ -13,7 +13,7 @@ class ContactController extends Controller
 {
     public function index(Request $request)
     {
-        $hasStatusColumn = Schema::hasColumn('contacts', 'status');
+        $hasStatusColumn = Schema::hasColumn('contacts', 'prospect_status');
         $query = Contact::query()->with('categories');
 
         // Filtres
@@ -30,7 +30,7 @@ class ContactController extends Controller
             });
         }
         if ($hasStatusColumn && $request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('prospect_status', $request->status);
         }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -79,14 +79,14 @@ class ContactController extends Controller
             'ville' => 'nullable|string|max:100',
             'secteur_activite' => 'nullable|string|max:255',
             'source' => 'nullable|string|max:255',
-            'status' => 'nullable|string|max:100',
+            'prospect_status' => 'nullable|string|max:100',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
             'notes' => 'nullable|string',
         ]);
 
-        if (empty($validated['status'])) {
-            $validated['status'] = Contact::STATUS_NOUVEAU;
+        if (empty($validated['prospect_status'])) {
+            $validated['prospect_status'] = Contact::STATUS_NOUVEAU;
         }
 
         $categoryIds = $validated['categories'] ?? [];
@@ -121,7 +121,7 @@ class ContactController extends Controller
             'ville' => 'nullable|string|max:100',
             'secteur_activite' => 'nullable|string|max:255',
             'source' => 'nullable|string|max:255',
-            'status' => 'nullable|string|max:100',
+            'prospect_status' => 'nullable|string|max:100',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
             'notes' => 'nullable|string',

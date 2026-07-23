@@ -29,12 +29,12 @@ class DashboardController extends Controller
 
         $prospectStats = [
             'total' => Contact::count(),
-            'nouveau' => Contact::where('status', Contact::STATUS_NOUVEAU)->count(),
-            'envoye' => Contact::where('status', Contact::STATUS_EMAIL_ENVOYE)->count(),
-            'ouvert' => Contact::where('status', Contact::STATUS_EMAIL_OUVERT)->count(),
-            'interesse' => Contact::where('status', Contact::STATUS_INTERESSE)->count(),
-            'relancer' => Contact::where('status', Contact::STATUS_A_RELANCER)->count(),
-            'client' => Contact::where('status', Contact::STATUS_CLIENT)->count(),
+            'nouveau' => Contact::where('prospect_status', Contact::STATUS_NOUVEAU)->count(),
+            'envoye' => Contact::where('prospect_status', Contact::STATUS_EMAIL_ENVOYE)->count(),
+            'ouvert' => Contact::where('prospect_status', Contact::STATUS_EMAIL_OUVERT)->count(),
+            'interesse' => Contact::where('prospect_status', Contact::STATUS_INTERESSE)->count(),
+            'relancer' => Contact::where('prospect_status', Contact::STATUS_A_RELANCER)->count(),
+            'client' => Contact::where('prospect_status', Contact::STATUS_CLIENT)->count(),
         ];
 
         $campaignsWithStats = Campaign::withCount([
