@@ -12,9 +12,20 @@ class TrackingController extends Controller
     {
         $emailLog = EmailLog::with('contact')->find($log_id);
         if ($emailLog) {
-            if (!$emailLog->opened) {
-                $emailLog->update(['opened' => true]);
+            $updates = [];
+
+            if (! $emailLog->opened) {
+                $updates['opened'] = true;
             }
+
+            if ($emailLog->status === EmailLog::STATUS_SENT) {
+                $updates['status'] = EmailLog::STATUS_DELIVERED;
+            }
+
+            if (! empty($updates)) {
+                $emailLog->update($updates);
+            }
+
             if ($emailLog->contact) {
                 $emailLog->contact->advanceStatusTo(Contact::STATUS_EMAIL_OUVERT);
             }

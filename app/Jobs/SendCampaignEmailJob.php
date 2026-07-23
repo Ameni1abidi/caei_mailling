@@ -32,7 +32,18 @@ class SendCampaignEmailJob implements ShouldQueue
     public function handle(): void
     {
         $emailLog = EmailLog::find($this->emailLogId);
-        if (!$emailLog) return;
+        if (! $emailLog) {
+            return;
+        }
+
+        if (! filter_var($this->contact->email, FILTER_VALIDATE_EMAIL)) {
+            $emailLog->update([
+                'status' => EmailLog::STATUS_INVALID,
+                'error_message' => 'Adresse email invalide',
+            ]);
+            Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
+            return;
+        }
 
         try {
             $smtp = SmtpSetting::where('is_active', true)->first();
@@ -63,7 +74,7 @@ class SendCampaignEmailJob implements ShouldQueue
             }
 
             $emailLog->update([
-                'status' => 'sent',
+                'status' => EmailLog::STATUS_SENT,
                 'sent_at' => now(),
             ]);
 
@@ -71,25 +82,52 @@ class SendCampaignEmailJob implements ShouldQueue
             $this->contact->advanceStatusTo(Contact::STATUS_EMAIL_ENVOYE);
 
             Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
-            // Pause d'une seconde pour éviter les limites de Mailtrap (Too many emails per second)
-            // Surtout utile si le queue worker essaie de rattraper son retard
             sleep(1);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $status = $this->determineFailureStatus($e);
             $emailLog->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage()
+                'status' => $status,
+                'error_message' => $e->getMessage(),
             ]);
+
             Log::error("Échec envoi campagne #{$this->campaign->id} à {$this->contact->email} : " . $e->getMessage());
-            
-            // Pause plus longue en cas d'erreur pour ne pas spammer l'API
             sleep(2);
-            
+            Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
             throw $e;
         }
     }
 
     public function failed(\Throwable $exception): void
     {
-        EmailLog::where('id', $this->emailLogId)->update(['status' => 'failed']);
+        EmailLog::where('id', $this->emailLogId)
+            ->where('status', EmailLog::STATUS_PENDING)
+            ->update(['status' => EmailLog::STATUS_FAILED]);
+    }
+
+    private function determineFailureStatus(\Throwable $exception): string
+    {
+        $message = strtolower($exception->getMessage());
+
+        if (str_contains($message, 'invalid')
+            || str_contains($message, 'recipient address rejected')
+            || str_contains($message, 'invalid address')
+            || str_contains($message, 'user unknown')
+            || str_contains($message, 'mailbox unavailable')
+            || str_contains($message, 'address rejected')
+            || str_contains($message, 'format error')) {
+            return EmailLog::STATUS_INVALID;
+        }
+
+        if (str_contains($message, 'bounce')
+            || str_contains($message, '550')
+            || str_contains($message, '5.1')
+            || str_contains($message, '5.7')
+            || str_contains($message, 'undeliverable')
+            || str_contains($message, 'mailbox full')
+            || str_contains($message, 'recipient not found')) {
+            return EmailLog::STATUS_BOUNCED;
+        }
+
+        return EmailLog::STATUS_FAILED;
     }
 }

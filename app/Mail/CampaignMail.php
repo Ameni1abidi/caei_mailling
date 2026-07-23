@@ -32,7 +32,7 @@ class CampaignMail extends Mailable
             'date' => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
         ];
 
-        $this->contenuPersonnalise = CampaignController::personnaliser($campaign->contenu, $contact, $context);
+        $this->contenuPersonnalise = \App\Models\EmailTemplate::renderContent($campaign->contenu, $contact, $context);
         $this->objetPersonnalise = CampaignController::personnaliser($campaign->objet, $contact, $context);
     }
 

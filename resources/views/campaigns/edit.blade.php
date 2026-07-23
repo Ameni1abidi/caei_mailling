@@ -160,11 +160,117 @@
                     </div>
 
                     <!-- Contenu du message -->
-                    <div class="pt-3 border-t border-slate-100">
-                        <label for="contenu" class="block text-sm font-bold text-slate-800 mb-1.5">
-                            Contenu de l'email (HTML supporté) <span class="text-rose-500">*</span>
-                        </label>
-                        <textarea name="contenu" id="contenu" rows="13" required placeholder="Rédigez le texte de votre email..." class="w-full text-sm font-mono bg-slate-50/40 p-4 leading-relaxed rounded-xl border @error('contenu') border-rose-300 focus:ring-rose-500 focus:border-rose-500 @else border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @enderror transition-all">{{ old('contenu', $campaign->contenu) }}</textarea>
+                    @php
+                        $defaultContent = old('contenu', $campaign->contenu ?? '');
+                    @endphp
+                    <div class="pt-3 border-t border-slate-100" x-data="emailBuilder({ initialContent: {{ json_encode($defaultContent) }} })">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <label class="block text-sm font-bold text-slate-800">
+                                Éditeur de campagne <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="mode = 'builder'" :class="mode === 'builder' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition">Constructeur</button>
+                                <button type="button" @click="mode = 'html'; htmlValue = buildHtmlFromBlocks()" :class="mode === 'html' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition">Modifier HTML</button>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="contenu" :value="contentValue">
+
+                        <div x-show="mode === 'builder'" class="grid grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)] gap-4">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Ajouter un bloc</p>
+                                <div class="grid grid-cols-1 gap-2">
+                                    <button type="button" @click="addBlock('text')" class="text-left rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:bg-indigo-50">✍️ Texte</button>
+                                    <button type="button" @click="addBlock('image')" class="text-left rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:bg-indigo-50">🖼️ Image</button>
+                                    <button type="button" @click="addBlock('logo')" class="text-left rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:bg-indigo-50">🏷️ Logo CAEI</button>
+                                    <button type="button" @click="addBlock('button')" class="text-left rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:bg-indigo-50">🔘 Bouton</button>
+                                    <button type="button" @click="addBlock('link')" class="text-left rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:bg-indigo-50">🔗 Lien</button>
+                                    <button type="button" @click="addBlock('signature')" class="text-left rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:bg-indigo-50">✉️ Signature</button>
+                                    <button type="button" @click="addBlock('attachment')" class="text-left rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:bg-indigo-50">📎 Pièce jointe</button>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-white p-3 space-y-3 min-h-[260px]">
+                                <template x-if="blocks.length === 0">
+                                    <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                                        Ajoutez un premier bloc pour commencer votre email.
+                                    </div>
+                                </template>
+
+                                <template x-for="(block, index) in blocks" :key="block.id">
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm font-semibold text-slate-800" x-text="blockLabel(block.type)"></span>
+                                            <button type="button" @click="removeBlock(index)" class="text-xs font-semibold text-rose-600 hover:text-rose-700">Supprimer</button>
+                                        </div>
+
+                                        <template x-if="block.type === 'text'">
+                                            <div class="space-y-2">
+                                                <textarea x-model="block.content" rows="4" class="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm" placeholder="Votre texte..."></textarea>
+                                                <select x-model="block.align" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm">
+                                                    <option value="left">Aligner à gauche</option>
+                                                    <option value="center">Centrer</option>
+                                                    <option value="right">Aligner à droite</option>
+                                                </select>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="block.type === 'image'">
+                                            <div class="space-y-2">
+                                                <input x-model="block.src" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="/storage/logo-caei.png">
+                                                <input x-model="block.alt" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="Alt texte">
+                                                <input x-model="block.width" type="number" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="220">
+                                            </div>
+                                        </template>
+
+                                        <template x-if="block.type === 'logo'">
+                                            <div class="space-y-2">
+                                                <input x-model="block.src" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="/logo-caei.svg">
+                                                <input x-model="block.alt" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="Logo CAEI">
+                                            </div>
+                                        </template>
+
+                                        <template x-if="block.type === 'button'">
+                                            <div class="space-y-2">
+                                                <input x-model="block.label" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="Libellé du bouton">
+                                                <input x-model="block.url" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="@{{lien}}">
+                                                <input x-model="block.color" type="color" class="h-10 w-full rounded-xl border border-slate-200 bg-white p-1">
+                                            </div>
+                                        </template>
+
+                                        <template x-if="block.type === 'link'">
+                                            <div class="space-y-2">
+                                                <input x-model="block.label" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="Nom du lien">
+                                                <input x-model="block.url" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="@{{lien}}">
+                                            </div>
+                                        </template>
+
+                                        <template x-if="block.type === 'signature'">
+                                            <div class="space-y-2">
+                                                <textarea x-model="block.content" rows="3" class="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm" placeholder="L’équipe CAEI"></textarea>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="block.type === 'attachment'">
+                                            <div class="space-y-2">
+                                                <input x-model="block.label" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="Nom de la pièce jointe">
+                                                <input x-model="block.url" type="text" class="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" placeholder="/attachments/mon-fichier.pdf">
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div x-show="mode === 'html'" class="space-y-2">
+                            <textarea x-model="htmlValue" rows="12" class="w-full rounded-xl border border-slate-200 bg-slate-50/60 p-4 font-mono text-sm" placeholder="Collez ou éditez du HTML ici..."></textarea>
+                            <p class="text-xs text-slate-500">Le contenu HTML sera utilisé tel quel pour l’envoi et la prévisualisation.</p>
+                        </div>
+
+                        <div class="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 text-xs text-indigo-700">
+                            Astuce : vous pouvez utiliser les variables <span class="font-semibold">@{{prenom}}</span>, <span class="font-semibold">@{{entreprise}}</span> et <span class="font-semibold">@{{lien}}</span> dans vos blocs.
+                        </div>
+
                         @error('contenu')
                             <p class="text-xs text-rose-600 mt-1.5 font-semibold flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,6 +280,117 @@
                             </p>
                         @enderror
                     </div>
+
+                    <script>
+                        function emailBuilder({ initialContent = '' } = {}) {
+                            return {
+                                mode: 'builder',
+                                blocks: [],
+                                htmlValue: '',
+                                get contentValue() {
+                                    return this.mode === 'builder' ? JSON.stringify({ version: 1, theme: 'caei', blocks: this.blocks }) : this.htmlValue;
+                                },
+                                init() {
+                                    this.blocks = this.parseInitial(initialContent);
+                                    this.htmlValue = this.buildHtmlFromBlocks();
+                                },
+                                parseInitial(content) {
+                                    if (!content || !String(content).trim()) {
+                                        return [];
+                                    }
+
+                                    try {
+                                        const parsed = JSON.parse(String(content));
+                                        if (parsed && Array.isArray(parsed.blocks)) {
+                                            return parsed.blocks;
+                                        }
+                                        if (Array.isArray(parsed)) {
+                                            return parsed;
+                                        }
+                                    } catch (e) {}
+
+                                    return [{ id: this.makeId(), type: 'text', content: String(content), align: 'left' }];
+                                },
+                                addBlock(type) {
+                                    const block = { id: this.makeId(), type };
+                                    if (type === 'text') {
+                                        block.content = 'Bonjour @{{prenom}},\n\nVotre message ici.';
+                                        block.align = 'left';
+                                    } else if (type === 'image') {
+                                        block.src = '/logo-caei.svg';
+                                        block.alt = 'Logo CAEI';
+                                        block.width = 220;
+                                    } else if (type === 'logo') {
+                                        block.src = '/logo-caei.svg';
+                                        block.alt = 'Logo CAEI';
+                                    } else if (type === 'button') {
+                                        block.label = 'Découvrir le programme';
+                                        block.url = '@{{lien}}';
+                                        block.color = '#2563eb';
+                                    } else if (type === 'link') {
+                                        block.label = 'En savoir plus';
+                                        block.url = '@{{lien}}';
+                                    } else if (type === 'signature') {
+                                        block.content = 'L’équipe CAEI';
+                                    } else if (type === 'attachment') {
+                                        block.label = 'Pièce jointe';
+                                        block.url = '/attachments/mon-fichier.pdf';
+                                    }
+                                    this.blocks.push(block);
+                                    this.htmlValue = this.buildHtmlFromBlocks();
+                                },
+                                removeBlock(index) {
+                                    this.blocks.splice(index, 1);
+                                    this.htmlValue = this.buildHtmlFromBlocks();
+                                },
+                                blockLabel(type) {
+                                    return {
+                                        text: 'Bloc texte',
+                                        image: 'Bloc image',
+                                        logo: 'Bloc logo',
+                                        button: 'Bloc bouton',
+                                        link: 'Bloc lien',
+                                        signature: 'Bloc signature',
+                                        attachment: 'Bloc pièce jointe'
+                                    }[type] || 'Bloc';
+                                },
+                                buildHtmlFromBlocks() {
+                                    let html = '';
+                                    this.blocks.forEach((block) => {
+                                        if (!block || !block.type) {
+                                            return;
+                                        }
+
+                                        switch (block.type) {
+                                            case 'text':
+                                                html += '<div style="margin:0 0 16px 0; text-align:' + (block.align || 'left') + ';"><p style="margin:0; line-height:1.7; color:#0f172a;">' + (block.content || '').replace(/\n/g, '<br>') + '</p></div>';
+                                                break;
+                                            case 'image':
+                                            case 'logo':
+                                                html += '<div style="margin:0 0 16px 0;"><img src="' + (block.src || '/logo-caei.svg') + '" alt="' + (block.alt || 'Logo CAEI') + '" width="' + (block.width || 220) + '" style="max-width:100%; height:auto; display:block;" /></div>';
+                                                break;
+                                            case 'button':
+                                                html += '<div style="margin:0 0 16px 0;"><a href="' + (block.url || '#') + '" style="display:inline-block;background:' + (block.color || '#2563eb') + ';color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:600;">' + (block.label || 'Bouton') + '</a></div>';
+                                                break;
+                                            case 'link':
+                                                html += '<div style="margin:0 0 16px 0;"><a href="' + (block.url || '#') + '" style="color:#2563eb; text-decoration:underline;">' + (block.label || 'En savoir plus') + '</a></div>';
+                                                break;
+                                            case 'signature':
+                                                html += '<div style="margin:0 0 16px 0; font-style:italic; color:#334155;">' + (block.content || '') + '</div>';
+                                                break;
+                                            case 'attachment':
+                                                html += '<div style="margin:0 0 16px 0;"><a href="' + (block.url || '#') + '" style="color:#2563eb; text-decoration:underline;">' + (block.label || 'Pièce jointe') + '</a></div>';
+                                                break;
+                                        }
+                                    });
+                                    return html;
+                                },
+                                makeId() {
+                                    return 'block-' + Math.random().toString(36).slice(2, 10);
+                                }
+                            };
+                        }
+                    </script>
 
                     <!-- Action buttons footer inside form card -->
                     <div class="flex items-center justify-end gap-3 pt-5 border-t border-slate-100">

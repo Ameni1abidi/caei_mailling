@@ -75,7 +75,7 @@
 
                     <!-- Email Body Render -->
                     <div class="p-6 md:p-8 bg-white min-h-[300px] text-sm text-slate-800 leading-relaxed overflow-y-auto">
-                        {!! nl2br(\App\Models\EmailTemplate::sanitizeContent($contenuPersonnalise)) !!}
+                        {!! $contenuPersonnalise !!}
                     </div>
 
                     <!-- Attachments Footer -->

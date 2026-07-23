@@ -190,22 +190,28 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="grid grid-cols-4 gap-4 md:w-2/3">
+                                        <div class="grid grid-cols-3 gap-4 md:w-2/3">
                                             <div class="text-center p-3 rounded-xl bg-slate-50 group-hover:bg-white transition-colors">
                                                 <div class="text-[11px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Envoyés</div>
                                                 <div class="font-black text-slate-800 text-xl">{{ $campaign->envoyes_count }}</div>
                                             </div>
+                                            <div class="text-center p-3 rounded-xl bg-emerald-50/50 group-hover:bg-emerald-50 transition-colors">
+                                                <div class="text-[11px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Délivrés</div>
+                                                <div class="font-black text-emerald-600 text-xl">{{ $campaign->delivered_count }}</div>
+                                            </div>
+                                            <div class="text-center p-3 rounded-xl bg-red-50/50 group-hover:bg-red-50 transition-colors">
+                                                <div class="text-[11px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Rejetés</div>
+                                                <div class="font-black text-red-500 text-xl">{{ $campaign->bounced_count }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4 md:w-2/3">
+                                            <div class="text-center p-3 rounded-xl bg-amber-50/50 group-hover:bg-amber-50 transition-colors">
+                                                <div class="text-[11px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Invalides</div>
+                                                <div class="font-black text-amber-700 text-xl">{{ $campaign->invalid_count }}</div>
+                                            </div>
                                             <div class="text-center p-3 rounded-xl bg-sky-50/50 group-hover:bg-sky-50 transition-colors">
                                                 <div class="text-[11px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Ouverture</div>
                                                 <div class="font-black text-sky-600 text-xl">{{ $tauxOuverture }}%</div>
-                                            </div>
-                                            <div class="text-center p-3 rounded-xl bg-purple-50/50 group-hover:bg-purple-50 transition-colors">
-                                                <div class="text-[11px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Clic</div>
-                                                <div class="font-black text-purple-600 text-xl">{{ $tauxClic }}%</div>
-                                            </div>
-                                            <div class="text-center p-3 rounded-xl bg-red-50/50 group-hover:bg-red-50 transition-colors">
-                                                <div class="text-[11px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Erreurs</div>
-                                                <div class="font-black text-red-500 text-xl">{{ $campaign->erreurs_count }}</div>
                                             </div>
                                         </div>
                                     </div>

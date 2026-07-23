@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('campaign_id')->constrained()->cascadeOnDelete();
             $table->foreignId('contact_id')->constrained()->cascadeOnDelete();
-            $table->enum('status', ['pending', 'sent', 'delivered', 'bounced', 'failed'])
+            $table->enum('status', ['pending', 'sent', 'delivered', 'bounced', 'invalid', 'failed'])
                   ->default('pending');
             $table->boolean('opened')->default(false);
             $table->boolean('clicked')->default(false);
