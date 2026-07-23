@@ -37,7 +37,7 @@ class SendCampaignEmailJob implements ShouldQueue
         try {
             $smtp = SmtpSetting::where('is_active', true)->first();
 
-            $mailable = new CampaignMail($this->campaign, $this->contact);
+            $mailable = new CampaignMail($this->campaign, $this->contact, $this->emailLogId);
 
             if ($smtp) {
                 $mailerName = 'dynamic_smtp';
@@ -67,13 +67,23 @@ class SendCampaignEmailJob implements ShouldQueue
                 'sent_at' => now(),
             ]);
 
+<<<<<<< HEAD
             Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
+=======
+            // Pause d'une seconde pour éviter les limites de Mailtrap (Too many emails per second)
+            // Surtout utile si le queue worker essaie de rattraper son retard
+            sleep(1);
+>>>>>>> 3eb7d5f1729032926885bd60fa37556fce3ddedb
         } catch (\Exception $e) {
             $emailLog->update([
                 'status' => 'failed',
                 'error_message' => $e->getMessage()
             ]);
             Log::error("Échec envoi campagne #{$this->campaign->id} à {$this->contact->email} : " . $e->getMessage());
+            
+            // Pause plus longue en cas d'erreur pour ne pas spammer l'API
+            sleep(2);
+            
             throw $e;
         }
     }
