@@ -17,8 +17,8 @@
                 </div>
             </div>
             
-            <span class="px-3 py-1.5 rounded-full text-sm font-bold {{ $statuses[$contact->status]['badge'] ?? 'bg-slate-100' }}">
-                {{ $statuses[$contact->status]['label'] ?? $contact->status }}
+            <span class="px-3 py-1.5 rounded-full text-sm font-bold {{ $statuses[$contact->prospect_status]['badge'] ?? 'bg-slate-100' }}">
+                {{ $statuses[$contact->prospect_status]['label'] ?? $contact->prospect_status }}
             </span>
         </div>
 
@@ -127,7 +127,7 @@
                         
                         <select name="status" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" required>
                             @foreach($statuses as $key => $meta)
-                                <option value="{{ $key }}" {{ $contact->status === $key ? 'selected' : '' }}>
+                                <option value="{{ $key }}" {{ $contact->prospect_status === $key ? 'selected' : '' }}>
                                     {{ $meta['label'] }}
                                 </option>
                             @endforeach
