@@ -75,6 +75,83 @@
                 </div>
             </div>
 
+            <!-- MODULE 9 : Suivi des prospects -->
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 relative overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-xl shadow-md">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-700">MODULE 9</span>
+                                <h3 class="text-2xl font-bold text-slate-800 tracking-wide">Suivi des prospects</h3>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">Cycle de qualification des prospects après campagnes</p>
+                        </div>
+                    </div>
+
+                    <a href="{{ route('prospects.index') }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-md transition self-start md:self-auto">
+                        <span>Ouvrir le Pipeline</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                            Nouveau prospect
+                        </div>
+                        <div class="text-2xl font-black text-slate-800">{{ $prospectStats['nouveau'] ?? 0 }}</div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-blue-700 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Email envoyé
+                        </div>
+                        <div class="text-2xl font-black text-blue-700">{{ $prospectStats['envoye'] ?? 0 }}</div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                            Email ouvert
+                        </div>
+                        <div class="text-2xl font-black text-indigo-700">{{ $prospectStats['ouvert'] ?? 0 }}</div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-amber-50/60 border border-amber-100">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-amber-700 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            Intéressé
+                        </div>
+                        <div class="text-2xl font-black text-amber-700">{{ $prospectStats['interesse'] ?? 0 }}</div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-rose-50/60 border border-rose-100">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-rose-700 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                            À relancer
+                        </div>
+                        <div class="text-2xl font-black text-rose-700">{{ $prospectStats['relancer'] ?? 0 }}</div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Client
+                        </div>
+                        <div class="text-2xl font-black text-emerald-700">{{ $prospectStats['client'] ?? 0 }}</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Exemple de campagne -->
             <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                 <div class="p-8">
