@@ -188,6 +188,9 @@
                         <div class="relative" style="height: 320px;">
                             <canvas id="statusPieChart"></canvas>
                         </div>
+                        <div id="pieChartMessage" class="mt-4 text-center text-sm font-semibold text-indigo-600 h-6 transition-all duration-300 opacity-0 transform translate-y-2">
+                            <!-- Message will be injected here via JS -->
+                        </div>
                     </div>
 
                     <!-- Bar Chart: Volume par statut -->
@@ -334,7 +337,7 @@
             <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
             <script>
             document.addEventListener('DOMContentLoaded', function() {
-                const labels = {!! json_encode(array_map(fn($s) => $s['label'], $statuses)) !!};
+                const labels = {!! json_encode(array_values(array_map(fn($s) => $s['label'], $statuses))) !!};
                 const data = {!! json_encode(array_values(array_map(fn($key) => $stats[$key] ?? 0, array_keys($statuses)))) !!};
                 const colors = ['#94a3b8', '#3b82f6', '#6366f1', '#f59e0b', '#f43f5e', '#10b981'];
 
@@ -353,6 +356,17 @@
                         }]
                     },
                     options: {
+                        onClick: (e, activeEls) => {
+                            const msgDiv = document.getElementById('pieChartMessage');
+                            if (activeEls.length > 0) {
+                                const index = activeEls[0].index;
+                                const label = labels[index];
+                                msgDiv.textContent = 'Statut sélectionné : ' + label;
+                                msgDiv.classList.remove('opacity-0', 'translate-y-2');
+                            } else {
+                                msgDiv.classList.add('opacity-0', 'translate-y-2');
+                            }
+                        },
                         responsive: true,
                         maintainAspectRatio: false,
                         cutout: '60%',
