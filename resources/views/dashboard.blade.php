@@ -74,26 +74,7 @@
                     </div>
                 </div>
 
-                <!-- Graphique Répartition -->
-                <div class="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
-                    <h3 class="text-xl font-bold text-slate-800 mb-6">Répartition des performances</h3>
-                    <canvas id="emailStatsChart" class="max-h-[250px]"></canvas>
-                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                    <script>
-                        const ctx = document.getElementById('emailStatsChart').getContext('2d');
-                        new Chart(ctx, {
-                            type: 'doughnut',
-                            data: {
-                                labels: ['Ouverts', 'Clics', 'Erreurs'],
-                                datasets: [{
-                                    data: [{{ $emailsOuverts }}, {{ $emailsClics }}, {{ $emailsRejetes }}],
-                                    backgroundColor: ['#0ea5e9', '#a855f7', '#ef4444']
-                                }]
-                            },
-                            options: { responsive: true, maintainAspectRatio: false }
-                        });
-                    </script>
-                </div>
+
             </div>
 
             <!-- MODULE 9 : Suivi des prospects -->
