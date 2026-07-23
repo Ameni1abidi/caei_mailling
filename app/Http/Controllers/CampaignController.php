@@ -106,7 +106,7 @@ class CampaignController extends Controller
             'date' => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
         ];
 
-        $contenuPersonnalise = $this->personnaliser($campaign->contenu, $contact, $context);
+        $contenuPersonnalise = EmailTemplate::renderContent($campaign->contenu, $contact, $context);
         $objetPersonnalise = $this->personnaliser($campaign->objet, $contact, $context);
 
         return view('campaigns.preview', compact(
@@ -169,7 +169,7 @@ class CampaignController extends Controller
             $emailLog = EmailLog::create([
                 'campaign_id' => $campaign->id,
                 'contact_id' => $contact->id,
-                'status' => 'pending',
+                'status' => EmailLog::STATUS_PENDING,
             ]);
 
             SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)

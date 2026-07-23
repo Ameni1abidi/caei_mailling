@@ -14,11 +14,18 @@ class DashboardController extends Controller
         $campagnesEnvoyees = Campaign::where('statut', 'envoyee')->count();
         $campagnesProgrammees = Campaign::where('statut', 'en_cours')->count();
 
-        $emailsEnvoyes = EmailLog::count();
-        $emailsDelivres = EmailLog::where('status', 'sent')->count();
+        $emailsEnvoyes = EmailLog::whereIn('status', [
+            EmailLog::STATUS_SENT,
+            EmailLog::STATUS_DELIVERED,
+        ])->count();
+        $emailsDelivres = EmailLog::where('status', EmailLog::STATUS_DELIVERED)->count();
         $emailsOuverts = EmailLog::where('opened', true)->count();
         $emailsClics = EmailLog::where('clicked', true)->count();
-        $emailsRejetes = EmailLog::where('status', 'failed')->count();
+        $emailsRejetes = EmailLog::whereIn('status', [
+            EmailLog::STATUS_FAILED,
+            EmailLog::STATUS_BOUNCED,
+            EmailLog::STATUS_INVALID,
+        ])->count();
 
         $prospectStats = [
             'total' => Contact::count(),
@@ -32,6 +39,15 @@ class DashboardController extends Controller
 
         $campaignsWithStats = Campaign::withCount([
             'emailLogs as envoyes_count',
+            'emailLogs as delivered_count' => function($query) {
+                $query->where('status', EmailLog::STATUS_DELIVERED);
+            },
+            'emailLogs as bounced_count' => function($query) {
+                $query->where('status', EmailLog::STATUS_BOUNCED);
+            },
+            'emailLogs as invalid_count' => function($query) {
+                $query->where('status', EmailLog::STATUS_INVALID);
+            },
             'emailLogs as ouverts_count' => function($query) {
                 $query->where('opened', true);
             },
@@ -39,7 +55,11 @@ class DashboardController extends Controller
                 $query->where('clicked', true);
             },
             'emailLogs as erreurs_count' => function($query) {
-                $query->where('status', 'failed');
+                $query->whereIn('status', [
+                    EmailLog::STATUS_FAILED,
+                    EmailLog::STATUS_BOUNCED,
+                    EmailLog::STATUS_INVALID,
+                ]);
             }
         ])->latest()->take(10)->get();
 

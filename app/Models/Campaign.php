@@ -63,11 +63,11 @@ class Campaign extends Model
             return false;
         }
 
-        $hasEmailsNotSent = $this->emailLogs()
-            ->whereNotIn('status', ['sent', 'delivered'])
+        $hasPendingEmails = $this->emailLogs()
+            ->where('status', EmailLog::STATUS_PENDING)
             ->exists();
 
-        if ($hasEmailsNotSent) {
+        if ($hasPendingEmails) {
             return false;
         }
 
@@ -75,5 +75,25 @@ class Campaign extends Model
             ->whereKey($this->id)
             ->where('statut', 'en_cours')
             ->update(['statut' => 'envoyee']) > 0;
+    }
+
+    public function sentCount(): int
+    {
+        return $this->emailLogs()->where('status', EmailLog::STATUS_SENT)->count();
+    }
+
+    public function deliveredCount(): int
+    {
+        return $this->emailLogs()->where('status', EmailLog::STATUS_DELIVERED)->count();
+    }
+
+    public function bouncedCount(): int
+    {
+        return $this->emailLogs()->where('status', EmailLog::STATUS_BOUNCED)->count();
+    }
+
+    public function invalidCount(): int
+    {
+        return $this->emailLogs()->where('status', EmailLog::STATUS_INVALID)->count();
     }
 }

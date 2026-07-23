@@ -35,7 +35,7 @@ class UpdateProspectStatusAfterCampaign implements ShouldQueue
         foreach ($emailLogs as $log) {
             $contact = $log->contact;
 
-            if ($log->status === 'delivered' || $log->status === 'sent') {
+            if (in_array($log->status, [EmailLog::STATUS_DELIVERED, EmailLog::STATUS_SENT], true)) {
                 // Mettre à jour le statut à "Email envoyé" s'il est en phase initiale
                 if ($contact->status === Contact::STATUS_NOUVEAU) {
                     $contact->updateStatusWithLog(

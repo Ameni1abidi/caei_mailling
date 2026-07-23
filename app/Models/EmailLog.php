@@ -7,6 +7,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmailLog extends Model
 {
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SENT = 'sent';
+    public const STATUS_DELIVERED = 'delivered';
+    public const STATUS_BOUNCED = 'bounced';
+    public const STATUS_INVALID = 'invalid';
+    public const STATUS_FAILED = 'failed';
+
+    public static function statuses(): array
+    {
+        return [
+            self::STATUS_PENDING,
+            self::STATUS_SENT,
+            self::STATUS_DELIVERED,
+            self::STATUS_BOUNCED,
+            self::STATUS_INVALID,
+            self::STATUS_FAILED,
+        ];
+    }
+
     protected $fillable = [
         'campaign_id',
         'contact_id',
