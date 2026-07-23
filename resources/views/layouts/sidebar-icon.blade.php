@@ -14,6 +14,9 @@
         @case('campaigns')
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 7.5h16v10H4zM4 8l8 5 8-5" />
             @break
+        @case('prospects')
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+            @break
         @case('templates')
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 3h8l4 4v14H7zM15 3v5h5M10 12h6M10 16h6" />
             @break

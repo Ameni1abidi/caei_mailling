@@ -148,6 +148,38 @@
         </div>
     </div>
 
+    <!-- Section 4: Qualification & Statut Prospect (Module 9) -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-5">
+        <div class="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+            <div class="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <h2 class="font-bold text-slate-900 text-base">Suivi & Qualification du Prospect</h2>
+                <p class="text-xs text-slate-400">Statut du cycle de prospect (Module 9)</p>
+            </div>
+        </div>
+
+        <div>
+            <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Statut du contact
+            </label>
+            @php
+                $availableStatuses = \App\Models\Contact::getProspectStatuses();
+                $currentStatus = old('status', $contact->status ?? \App\Models\Contact::STATUS_NOUVEAU);
+            @endphp
+            <select name="status" id="status" class="w-full text-sm py-2.5 px-3.5 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 font-medium">
+                @foreach($availableStatuses as $stKey => $stMeta)
+                    <option value="{{ $stKey }}" {{ $currentStatus === $stKey ? 'selected' : '' }}>
+                        {{ $stMeta['label'] }} — {{ $stMeta['description'] }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+
     <!-- Section 4: Catégories & Listes -->
     <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100">

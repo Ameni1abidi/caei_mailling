@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Contact;
 use App\Models\EmailLog;
 use Illuminate\Http\Request;
 
@@ -9,9 +10,14 @@ class TrackingController extends Controller
 {
     public function open($log_id)
     {
-        $emailLog = EmailLog::find($log_id);
-        if ($emailLog && !$emailLog->opened) {
-            $emailLog->update(['opened' => true]);
+        $emailLog = EmailLog::with('contact')->find($log_id);
+        if ($emailLog) {
+            if (!$emailLog->opened) {
+                $emailLog->update(['opened' => true]);
+            }
+            if ($emailLog->contact) {
+                $emailLog->contact->advanceStatusTo(Contact::STATUS_EMAIL_OUVERT);
+            }
         }
 
         // 1x1 transparent GIF

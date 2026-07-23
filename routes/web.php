@@ -9,6 +9,7 @@ use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\SmtpSettingController;
 use App\Http\Controllers\CampaignAttachmentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ProspectController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -26,6 +27,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::resource('contacts', ContactController::class);
     Route::post('contacts/import', [ContactController::class, 'import'])->name('contacts.import');
+
+    // MODULE 9 : Suivi des prospects
+    Route::get('prospects', [ProspectController::class, 'index'])->name('prospects.index');
+    Route::get('prospects/{contact}', [ProspectController::class, 'show'])->name('prospects.show');
+    Route::patch('prospects/{contact}/status', [ProspectController::class, 'updateStatus'])->name('prospects.update-status');
+    Route::post('prospects/{contact}/notes', [ProspectController::class, 'addNote'])->name('prospects.add-note');
+    Route::post('prospects/{contact}/followup', [ProspectController::class, 'scheduleFollowUp'])->name('prospects.schedule-followup');
 
     Route::resource('campaigns', CampaignController::class)->except(['show']);
     Route::get('campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('campaigns.preview');

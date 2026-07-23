@@ -183,6 +183,7 @@
                         <tr>
                             <th class="px-6 py-4">Contact</th>
                             <th class="px-6 py-4">Entreprise & Poste</th>
+                            <th class="px-6 py-4">Statut Prospect</th>
                             <th class="px-6 py-4">Coordonnées</th>
                             <th class="px-6 py-4">Localisation</th>
                             <th class="px-6 py-4">Listes / Catégories</th>
@@ -196,6 +197,11 @@
                                 $initials = strtoupper(substr($contact->prenom ?? '', 0, 1) . substr($contact->nom ?? '', 0, 1));
                                 if (!$initials) $initials = 'CT';
                                 $bgGradient = ['from-blue-500 to-indigo-600', 'from-purple-500 to-pink-600', 'from-emerald-500 to-teal-600', 'from-amber-500 to-orange-600'][abs(crc32($contact->email)) % 4];
+                                $stMeta = \App\Models\Contact::getProspectStatuses()[$contact->status] ?? [
+                                    'label' => $contact->status ?? 'Nouveau prospect',
+                                    'badge' => 'bg-slate-100 text-slate-700 border-slate-200',
+                                    'dot' => 'bg-slate-400'
+                                ];
                             @endphp
                             <tr class="hover:bg-slate-50/80 transition group">
                                 <!-- Contact Name & Avatar -->
@@ -223,6 +229,14 @@
                                     @else
                                         <span class="text-slate-400 italic">-</span>
                                     @endif
+                                </td>
+
+                                <!-- Statut Prospect (Module 9) -->
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border {{ $stMeta['badge'] }}">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $stMeta['dot'] }}"></span>
+                                        {{ $stMeta['label'] }}
+                                    </span>
                                 </td>
 
                                 <!-- Coordinates (Email / Phone / WhatsApp) -->

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Campaign;
 use App\Models\EmailLog;
+use App\Models\Contact;
 
 class DashboardController extends Controller
 {
@@ -18,6 +19,16 @@ class DashboardController extends Controller
         $emailsOuverts = EmailLog::where('opened', true)->count();
         $emailsClics = EmailLog::where('clicked', true)->count();
         $emailsRejetes = EmailLog::where('status', 'failed')->count();
+
+        $prospectStats = [
+            'total' => Contact::count(),
+            'nouveau' => Contact::where('status', Contact::STATUS_NOUVEAU)->count(),
+            'envoye' => Contact::where('status', Contact::STATUS_EMAIL_ENVOYE)->count(),
+            'ouvert' => Contact::where('status', Contact::STATUS_EMAIL_OUVERT)->count(),
+            'interesse' => Contact::where('status', Contact::STATUS_INTERESSE)->count(),
+            'relancer' => Contact::where('status', Contact::STATUS_A_RELANCER)->count(),
+            'client' => Contact::where('status', Contact::STATUS_CLIENT)->count(),
+        ];
 
         $campaignsWithStats = Campaign::withCount([
             'emailLogs as envoyes_count',
@@ -40,6 +51,7 @@ class DashboardController extends Controller
             'emailsOuverts',
             'emailsClics',
             'emailsRejetes',
+            'prospectStats',
             'campaignsWithStats'
         ));
     }
