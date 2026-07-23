@@ -39,6 +39,14 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
 
+        // GrapesJS Builder Routes
+        Route::get('email-templates/{email_template}/builder', [EmailTemplateController::class, 'builder'])
+            ->name('email-templates.builder');
+        Route::post('email-templates/{email_template}/builder', [EmailTemplateController::class, 'saveBuilder'])
+            ->name('email-templates.builder.save');
+        Route::post('email-templates/upload-image', [EmailTemplateController::class, 'uploadImage'])
+            ->name('email-templates.upload-image');
+
         Route::post('email-templates/install-defaults', [EmailTemplateController::class, 'installDefaults'])
             ->name('email-templates.install-defaults');
         Route::get('email-templates/{email_template}/preview', [EmailTemplateController::class, 'preview'])

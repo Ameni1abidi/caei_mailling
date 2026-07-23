@@ -56,4 +56,24 @@ class Campaign extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function markAsSentIfAllEmailsAreSent(): bool
+    {
+        if (! $this->emailLogs()->exists()) {
+            return false;
+        }
+
+        $hasEmailsNotSent = $this->emailLogs()
+            ->whereNotIn('status', ['sent', 'delivered'])
+            ->exists();
+
+        if ($hasEmailsNotSent) {
+            return false;
+        }
+
+        return $this->newQuery()
+            ->whereKey($this->id)
+            ->where('statut', 'en_cours')
+            ->update(['statut' => 'envoyee']) > 0;
+    }
 }
