@@ -93,6 +93,16 @@
 
                         <!-- Cible -->
                         <div>
+                            <label class="block text-sm font-bold text-slate-800 mb-2">
+                                Ciblage de la campagne
+                            </label>
+                            <x-campaign-audience-selector
+                                :categories="$categories"
+                                :selected-ids="old('category_ids', [])"
+                                :all-selected="(bool) old('all_contacts')"
+                                :total-contacts="$totalContacts"
+                                :recipient-count-url="route('campaigns.recipient-count')"
+                            />
                             <label class="block text-sm font-bold text-slate-800 mb-1.5">
                                 Ciblage de la campagne
                             </label>

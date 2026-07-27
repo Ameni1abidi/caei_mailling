@@ -85,18 +85,33 @@
             </div>
         @endif
 
-        <!-- Destination target Info banner -->
-        <div class="bg-indigo-50 border border-indigo-100 text-indigo-900 p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
+        <!-- Destination target Info banner (dynamic via audienceBanner) -->
+        <div
+            x-data="audienceBanner({{ $nbDestinataires }})"
+            @audience-count-changed.window="update($event.detail.count)"
+            class="bg-indigo-50 border border-indigo-100 text-indigo-900 p-4 rounded-2xl flex items-center gap-3.5 shadow-sm transition-all"
+        >
             <div class="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
             </div>
-            <div>
+            <div class="flex-1">
                 <div class="text-xs text-indigo-700 font-semibold uppercase tracking-wider">Cible d'envoi</div>
-                <div class="text-base font-bold text-indigo-950 mt-0.5">Cette campagne sera envoyée à <strong class="text-indigo-600 font-extrabold">{{ $nbDestinataires }}</strong> destinataires ciblés.</div>
+                <div class="text-base font-bold text-indigo-950 mt-0.5">
+                    Cette campagne sera envoyée à
+                    <strong class="text-indigo-600 font-extrabold tabular-nums" x-text="count.toLocaleString('fr-FR')"></strong>
+                    destinataire<span x-show="count !== 1">s</span> ciblé<span x-show="count !== 1">s</span>.
+                </div>
             </div>
+            <span x-show="loading" class="inline-block w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin shrink-0"></span>
         </div>
+        <script>
+            function audienceBanner(initial) {
+                return { count: initial, loading: false,
+                    update(c) { this.count = c; } };
+            }
+        </script>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Left Side Campaign Edit Form (2 cols) -->
@@ -146,6 +161,21 @@
 
                     <!-- Cible -->
                     <div>
+                        <label class="block text-sm font-bold text-slate-800 mb-2">
+                            Ciblage de la campagne
+                        </label>
+                        @php
+                            $preSelectedIds = old('category_ids', $campaign->categoryIds());
+                            $preAllSelected = (bool) old('all_contacts', $campaign->categoryIds() === [] ? '1' : '');
+                        @endphp
+                        <x-campaign-audience-selector
+                            :categories="$categories"
+                            :selected-ids="$preSelectedIds"
+                            :all-selected="$preAllSelected"
+                            :total-contacts="$totalContacts"
+                            :recipient-count-url="route('campaigns.recipient-count')"
+                            broadcast-changes
+                        />
                         <label class="block text-sm font-bold text-slate-800 mb-1.5">
                             Ciblage de la campagne
                         </label>
