@@ -17,6 +17,8 @@ class Campaign extends Model
         'import_log_id',
         'date_envoi',
         'statut',
+        'auto_retry',
+        'max_auto_retries',
         'created_by'
     ];
 
@@ -25,6 +27,8 @@ class Campaign extends Model
         return [
             'date_envoi' => 'datetime',
             'category_ids' => 'array',
+            'auto_retry' => 'boolean',
+            'max_auto_retries' => 'integer',
         ];
     }
 
@@ -78,6 +82,17 @@ class Campaign extends Model
     public function emailLogs(): HasMany
     {
         return $this->hasMany(EmailLog::class);
+    }
+
+    /**
+     * Get the failed email logs for this campaign.
+     */
+    public function failedEmailLogs(): HasMany
+    {
+        return $this->hasMany(EmailLog::class)->whereIn('status', [
+            EmailLog::STATUS_FAILED,
+            EmailLog::STATUS_BOUNCED,
+        ]);
     }
 
     /**

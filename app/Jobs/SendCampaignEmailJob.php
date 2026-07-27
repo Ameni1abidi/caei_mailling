@@ -36,6 +36,15 @@ class SendCampaignEmailJob implements ShouldQueue
             return;
         }
 
+        $campaign = Campaign::find($this->campaign->id);
+        if (!$campaign || $campaign->statut === 'annulee') {
+            $emailLog->update([
+                'status' => EmailLog::STATUS_FAILED,
+                'error_message' => 'Campagne annulée par l\'utilisateur',
+            ]);
+            return;
+        }
+
         if (! filter_var($this->contact->email, FILTER_VALIDATE_EMAIL)) {
             $emailLog->update([
                 'status' => EmailLog::STATUS_INVALID,

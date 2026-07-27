@@ -107,6 +107,35 @@
                             />
                         </div>
 
+                        <!-- Configuration des relances automatiques -->
+                        <div class="pt-3 border-t border-slate-100" x-data="{ autoRetry: {{ old('auto_retry', '1') ? 'true' : 'false' }} }">
+                            <label class="block text-sm font-bold text-slate-800 mb-2">
+                                Relances automatiques d'envoi
+                            </label>
+                            
+                            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" name="auto_retry" value="1" x-model="autoRetry" class="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                    <div>
+                                        <span class="text-sm font-bold text-slate-800">Activer la relance automatique en cas d'échec</span>
+                                        <p class="text-xs text-slate-500">Le système tentera automatiquement de renvoyer les emails échoués en arrière-plan.</p>
+                                    </div>
+                                </label>
+
+                                <div x-show="autoRetry" class="pl-7 pt-2.5 border-t border-slate-200/60 flex flex-wrap items-center gap-3">
+                                    <label for="max_auto_retries" class="text-xs font-semibold text-slate-700">
+                                        Nombre maximal de relances automatiques :
+                                    </label>
+                                    <select name="max_auto_retries" id="max_auto_retries" class="text-xs py-1.5 px-3 rounded-lg border-slate-200 bg-white font-bold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="1" @selected(old('max_auto_retries', 3) == 1)>1 relance max</option>
+                                        <option value="2" @selected(old('max_auto_retries', 3) == 2)>2 relances max</option>
+                                        <option value="3" @selected(old('max_auto_retries', 3) == 3)>3 relances max (Recommandé)</option>
+                                        <option value="5" @selected(old('max_auto_retries', 3) == 5)>5 relances max</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Contenu du message -->
                         @php
                             $defaultContent = old('contenu', $template?->contenu ?? 'Bonjour {{prenom}} {{nom}},\n\nNous avons le plaisir de vous inviter...\n\nCordialement,\nL\'équipe CAEI');

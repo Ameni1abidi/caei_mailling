@@ -18,13 +18,21 @@ class CampaignController extends Controller
 {
     public function index()
     {
-        $campaigns = Campaign::with(['category', 'importLog'])->latest()->paginate(20);
+        $campaigns = Campaign::with(['category', 'importLog'])
+            ->withCount([
+                'emailLogs as failed_count' => function ($query) {
+                    $query->whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED]);
+                }
+            ])
+            ->latest()
+            ->paginate(20);
 
         $stats = [
             'total' => Campaign::count(),
             'brouillon' => Campaign::where('statut', 'brouillon')->count(),
             'en_cours' => Campaign::where('statut', 'en_cours')->count(),
             'envoyee' => Campaign::where('statut', 'envoyee')->count(),
+            'annulee' => Campaign::where('statut', 'annulee')->count(),
         ];
 
         return view('campaigns.index', compact('campaigns', 'stats'));
@@ -80,7 +88,15 @@ class CampaignController extends Controller
                 : $totalContacts;
         }
 
-        return view('campaigns.edit', compact('campaign', 'categories', 'importLogs', 'nbDestinataires', 'totalContacts'));
+        $failedLogs = EmailLog::where('campaign_id', $campaign->id)
+            ->whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED])
+            ->with('contact')
+            ->get();
+        $failedCount = $failedLogs->count();
+
+        return view('campaigns.edit', compact(
+            'campaign', 'categories', 'importLogs', 'nbDestinataires', 'totalContacts', 'failedLogs', 'failedCount'
+        ));
     }
 
     public function update(Request $request, Campaign $campaign)
@@ -88,6 +104,71 @@ class CampaignController extends Controller
         $campaign->update($this->validatedCampaign($request));
 
         return redirect()->route('campaigns.edit', $campaign)->with('success', 'Campagne mise à jour.');
+    }
+
+    /**
+     * Relancer les emails en échec pour une campagne donnée.
+     */
+    public function retryFailed(Request $request, Campaign $campaign)
+    {
+        $failedLogs = EmailLog::where('campaign_id', $campaign->id)
+            ->whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED])
+            ->with('contact')
+            ->get();
+
+        if ($failedLogs->isEmpty()) {
+            return back()->with('error', 'Aucun email en échec à relancer pour cette campagne.');
+        }
+
+        $smtp = SmtpSetting::where('is_active', true)->first();
+        $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
+        $delayBetweenEmails = (int) ceil(60 / $rateLimit);
+
+        $relances = 0;
+        foreach ($failedLogs as $log) {
+            if (!$log->contact || !filter_var($log->contact->email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+
+            $log->update([
+                'status' => EmailLog::STATUS_PENDING,
+                'error_message' => null,
+            ]);
+
+            SendCampaignEmailJob::dispatch($campaign, $log->contact, $log->id)
+                ->delay(now()->addSeconds($relances * $delayBetweenEmails))
+                ->onQueue('emails');
+
+            $relances++;
+        }
+
+        if ($relances > 0) {
+            $campaign->update(['statut' => 'en_cours']);
+        }
+
+        return redirect()->back()->with('success', "Relance d'envoi initiée pour {$relances} email(s) en échec.");
+    }
+
+    /**
+     * Annuler une campagne en cours ou enregistrée.
+     */
+    public function cancel(Campaign $campaign)
+    {
+        if (in_array($campaign->statut, ['envoyee', 'annulee'])) {
+            return back()->with('error', 'Cette campagne ne peut plus être annulée (déjà envoyée ou annulée).');
+        }
+
+        $campaign->update(['statut' => 'annulee']);
+
+        EmailLog::where('campaign_id', $campaign->id)
+            ->where('status', EmailLog::STATUS_PENDING)
+            ->update([
+                'status' => EmailLog::STATUS_FAILED,
+                'error_message' => 'Campagne annulée par l\'utilisateur',
+            ]);
+
+        return redirect()->route('campaigns.index')
+            ->with('success', 'La campagne a été annulée avec succès.');
     }
 
     /**
@@ -256,7 +337,12 @@ class CampaignController extends Controller
             'import_batch_id' => 'nullable|exists:import_logs,id',
             'all_contacts' => 'nullable|boolean',
             'targeting_mode' => 'nullable|string',
+            'auto_retry' => 'nullable|boolean',
+            'max_auto_retries' => 'nullable|integer|min:1|max:5',
         ]);
+
+        $validated['auto_retry'] = $request->boolean('auto_retry', true);
+        $validated['max_auto_retries'] = max(1, (int) $request->input('max_auto_retries', 3));
 
         $mode = $request->input('targeting_mode');
         $importLogId = $request->input('import_log_id', $request->input('import_batch_id'));
