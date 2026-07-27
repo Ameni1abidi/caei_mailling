@@ -33,4 +33,12 @@ class ImportLog extends Model
     {
         return $this->hasMany(Contact::class);
     }
+
+    /**
+     * Campaigns targeting this import file.
+     */
+    public function campaigns(): HasMany
+    {
+        return $this->hasMany(Campaign::class, 'import_log_id');
+    }
 }
