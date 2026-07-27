@@ -63,6 +63,12 @@ class CampaignController extends Controller
         $importLogs = ImportLog::where('imported', '>', 0)->latest()->get();
         $totalContacts = Contact::count();
 
+        $categoryIds = $campaign->categoryIds();
+        $nbDestinataires = $categoryIds !== []
+            ? Contact::query()->whereHas('categories', function ($query) use ($categoryIds) {
+                $query->whereIn('categories.id', $categoryIds);
+            })->distinct()->count('contacts.id')
+            : $totalContacts;
         if ($campaign->import_log_id) {
             $nbDestinataires = Contact::where('import_log_id', $campaign->import_log_id)->count();
         } else {
