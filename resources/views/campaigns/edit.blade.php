@@ -181,6 +181,35 @@
                         />
                     </div>
 
+                    <!-- Configuration des relances automatiques -->
+                    <div class="pt-3 border-t border-slate-100" x-data="{ autoRetry: {{ old('auto_retry', $campaign->auto_retry) ? 'true' : 'false' }} }">
+                        <label class="block text-sm font-bold text-slate-800 mb-2">
+                            Relances automatiques d'envoi
+                        </label>
+                        
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" name="auto_retry" value="1" x-model="autoRetry" class="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-800">Activer la relance automatique en cas d'échec</span>
+                                    <p class="text-xs text-slate-500">Le système tentera automatiquement de renvoyer les emails échoués en arrière-plan.</p>
+                                </div>
+                            </label>
+
+                            <div x-show="autoRetry" class="pl-7 pt-2.5 border-t border-slate-200/60 flex flex-wrap items-center gap-3">
+                                <label for="max_auto_retries" class="text-xs font-semibold text-slate-700">
+                                    Nombre maximal de relances automatiques :
+                                </label>
+                                <select name="max_auto_retries" id="max_auto_retries" class="text-xs py-1.5 px-3 rounded-lg border-slate-200 bg-white font-bold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="1" @selected(old('max_auto_retries', $campaign->max_auto_retries ?? 3) == 1)>1 relance max</option>
+                                    <option value="2" @selected(old('max_auto_retries', $campaign->max_auto_retries ?? 3) == 2)>2 relances max</option>
+                                    <option value="3" @selected(old('max_auto_retries', $campaign->max_auto_retries ?? 3) == 3)>3 relances max (Recommandé)</option>
+                                    <option value="5" @selected(old('max_auto_retries', $campaign->max_auto_retries ?? 3) == 5)>5 relances max</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Contenu du message -->
                     @php
                         $defaultContent = old('contenu', $campaign->contenu ?? '');
@@ -519,7 +548,41 @@
                         Lancement de l'envoi
                     </h2>
 
-                    @if($campaign->statut === 'brouillon')
+                    @if(($failedCount ?? 0) > 0)
+                        <div class="bg-rose-50 border border-rose-200 text-rose-950 p-4 rounded-xl space-y-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-rose-800 uppercase tracking-wider">
+                                <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>{{ $failedCount }} email(s) en échec</span>
+                            </div>
+                            <p class="text-xs text-rose-700 leading-relaxed font-medium">
+                                Des erreurs sont survenues lors du précédent envoi. Vous pouvez relancer uniquement les destinataires concernés.
+                            </p>
+                            <form action="{{ route('campaigns.retry-failed', $campaign) }}" method="POST"
+                                  onsubmit="return confirm('Relancer l\'envoi pour les {{ $failedCount }} email(s) en échec ?')">
+                                @csrf
+                                <button type="submit" class="inline-flex items-center justify-center gap-2 w-full bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition duration-150">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    </svg>
+                                    <span>Relancer les {{ $failedCount }} échec(s)</span>
+                                </button>
+                            </form>
+                        </div>
+                    @endif
+
+                    @if($campaign->statut === 'annulee')
+                        <div class="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl space-y-2 text-center">
+                            <svg class="w-8 h-8 text-rose-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                            </svg>
+                            <div class="text-xs font-bold uppercase tracking-wider text-rose-900 mt-1">Campagne Annulée</div>
+                            <div class="text-[11px] leading-relaxed font-medium text-rose-700">
+                                L'envoi de cette campagne a été annulé par l'utilisateur.
+                            </div>
+                        </div>
+                    @elseif($campaign->statut === 'brouillon')
                         <div class="bg-emerald-50 border border-emerald-100 text-emerald-950 p-4 rounded-xl space-y-3.5">
                             <div class="text-xs leading-relaxed font-semibold text-emerald-800">
                                 <span class="font-extrabold text-emerald-950">Attention :</span> cette action enverra immédiatement des emails personnalisés aux <span class="underline">{{ $nbDestinataires }}</span> contacts ciblés. Cette action est définitive.
@@ -536,14 +599,27 @@
                             </form>
                         </div>
                     @else
-                        <div class="bg-slate-50 border border-slate-200 text-slate-500 p-4 rounded-xl space-y-2 text-center">
+                        <div class="bg-slate-50 border border-slate-200 text-slate-500 p-4 rounded-xl space-y-3 text-center">
                             <svg class="w-8 h-8 text-slate-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             <div class="text-xs font-bold uppercase tracking-wider text-slate-700 mt-1">Campagne déjà lancée</div>
                             <div class="text-[11px] leading-relaxed font-medium">
-                                Le statut actuel est <strong class="text-indigo-600">@if($campaign->statut === 'envoyee') Envoyée @else En cours @endif</strong>. Il est impossible de renvoyer ou modifier une campagne lancée.
+                                Le statut actuel est <strong class="text-indigo-600">@if($campaign->statut === 'envoyee') Envoyée @else En cours @endif</strong>.
                             </div>
+
+                            @if($campaign->statut === 'en_cours')
+                                <form action="{{ route('campaigns.cancel', $campaign) }}" method="POST"
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cette campagne en cours ? L\'envoi des emails restants sera arrêté.')">
+                                    @csrf
+                                    <button type="submit" class="inline-flex items-center justify-center gap-2 w-full bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold py-2 px-3 rounded-lg text-xs transition">
+                                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                        </svg>
+                                        <span>Annuler l'envoi de la campagne</span>
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     @endif
                 </div>
