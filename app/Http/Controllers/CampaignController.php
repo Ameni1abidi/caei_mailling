@@ -66,7 +66,6 @@ class CampaignController extends Controller
                 $query->whereIn('categories.id', $categoryIds);
             })->distinct()->count('contacts.id')
             : $totalContacts;
-            : Contact::count();
 
         return view('campaigns.edit', compact('campaign', 'categories', 'nbDestinataires', 'totalContacts'));
     }
