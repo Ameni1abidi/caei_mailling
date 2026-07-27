@@ -27,7 +27,8 @@ class Contact extends Model
         'notes',
         'last_interaction',
         'next_followup_date',
-        'last_campaign_id'
+        'last_campaign_id',
+        'import_log_id',
     ];
 
     protected function casts(): array
@@ -114,6 +115,14 @@ class Contact extends Model
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);
+    }
+
+    /**
+     * Get the import log this contact belongs to.
+     */
+    public function importLog(): BelongsTo
+    {
+        return $this->belongsTo(ImportLog::class);
     }
 
     /**

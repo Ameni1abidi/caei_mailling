@@ -25,8 +25,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::resource('contacts', ContactController::class);
+    // Routes spécifiques contacts (avant resource pour éviter conflit avec {contact})
     Route::post('contacts/import', [ContactController::class, 'import'])->name('contacts.import');
+    Route::get('contacts/import-history', [ContactController::class, 'importHistory'])->name('contacts.import-history');
+    Route::resource('contacts', ContactController::class);
 
     // MODULE 9 : Suivi des prospects
     Route::get('prospects', [ProspectController::class, 'index'])->name('prospects.index');

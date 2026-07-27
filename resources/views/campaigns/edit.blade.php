@@ -165,39 +165,20 @@
                             Ciblage de la campagne
                         </label>
                         @php
-                            $preSelectedIds = old('category_ids', $campaign->categoryIds());
-                            $preAllSelected = (bool) old('all_contacts', $campaign->categoryIds() === [] ? '1' : '');
+                            $preSelectedCategoryIds = old('category_ids', $campaign->categoryIds());
+                            $preSelectedImportId = old('import_log_id', old('import_batch_id', $campaign->import_log_id));
+                            $preAllSelected = (bool) old('all_contacts', ($campaign->categoryIds() === [] && !$campaign->import_log_id) ? '1' : '');
                         @endphp
                         <x-campaign-audience-selector
                             :categories="$categories"
-                            :selected-ids="$preSelectedIds"
+                            :import-logs="$importLogs"
+                            :selected-category-ids="$preSelectedCategoryIds"
+                            :selected-import-id="$preSelectedImportId"
                             :all-selected="$preAllSelected"
                             :total-contacts="$totalContacts"
                             :recipient-count-url="route('campaigns.recipient-count')"
                             broadcast-changes
                         />
-                        <label class="block text-sm font-bold text-slate-800 mb-1.5">
-                            Ciblage de la campagne
-                        </label>
-
-                        <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-                            <input type="checkbox" name="all_contacts" value="1" {{ old('all_contacts', $campaign->categoryIds() === [] ? '1' : '') ? 'checked' : '' }} class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                            <span>Tous les contacts</span>
-                        </label>
-
-                        <div class="mt-3">
-                            <label for="category_ids" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                                Ou choisir plusieurs listes ciblées
-                            </label>
-                            <select name="category_ids[]" id="category_ids" multiple class="w-full min-h-[120px] text-sm py-2.5 px-3.5 rounded-xl bg-slate-50/50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-700">
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ in_array($cat->id, old('category_ids', $campaign->categoryIds()), true) ? 'selected' : '' }}>
-                                        {{ $cat->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <p class="mt-2 text-xs text-slate-500">Maintenez la touche Ctrl/Cmd pour sélectionner plusieurs listes.</p>
-                        </div>
                     </div>
 
                     <!-- Contenu du message -->

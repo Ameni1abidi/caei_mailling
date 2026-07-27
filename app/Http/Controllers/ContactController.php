@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Contact;
 use App\Models\Category;
+use App\Models\ImportLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use App\Imports\ContactsImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -14,9 +16,12 @@ class ContactController extends Controller
     public function index(Request $request)
     {
         $hasStatusColumn = Schema::hasColumn('contacts', 'prospect_status');
+
+        $importLogId = $request->input('import_log_id');
+        $importContext = $importLogId ? ImportLog::find($importLogId) : null;
+
         $query = Contact::query()->with('categories');
 
-        // Filtres
         if ($request->filled('pays')) {
             $query->where('pays', $request->pays);
         }
@@ -40,9 +45,13 @@ class ContactController extends Controller
                   ->orWhere('email', 'like', "%{$request->search}%");
             });
         }
+        if ($importLogId) {
+            $query->where('import_log_id', $importLogId);
+        }
 
         $contacts = $query->latest()->paginate(25)->withQueryString();
-        $categories = Category::withCount('contacts')->orderBy('name')->get(['id', 'name']);
+
+        $categories = Category::withCount('contacts')->orderBy('name')->get(['id', 'name', 'contacts_count']);
         $paysOptions = Contact::whereNotNull('pays')
             ->where('pays', '!=', '')
             ->distinct()
@@ -54,8 +63,13 @@ class ContactController extends Controller
             ->orderBy('secteur_activite')
             ->pluck('secteur_activite');
         $statusOptions = Contact::getProspectStatuses();
+        $totalContacts = Contact::count();
 
-        return view('contacts.index', compact('contacts', 'categories', 'paysOptions', 'secteurOptions', 'statusOptions', 'hasStatusColumn'));
+        return view('contacts.index', compact(
+            'contacts', 'categories', 'paysOptions', 'secteurOptions',
+            'statusOptions', 'hasStatusColumn', 'totalContacts',
+            'importContext'
+        ));
     }
 
     public function create()
@@ -143,19 +157,57 @@ class ContactController extends Controller
     }
 
     public function import(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,csv,txt|max:10240', // 10 Mo max
-    ]);
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv,txt|max:10240',
+        ]);
 
-    $import = new ContactsImport();
-    Excel::import($import, $request->file('file'));
+        $file = $request->file('file');
+        $originalName = $file->getClientOriginalName();
 
-    $errors = $import->errors();
-    $message = $errors->count() > 0
-        ? "Import terminé avec {$errors->count()} erreurs."
-        : "Import réussi.";
+        // Créer un enregistrement d'import en avance (pour lier les contacts)
+        $importLog = ImportLog::create([
+            'filename'   => $originalName,
+            'user_id'    => Auth::id(),
+            'imported'   => 0,
+            'duplicates' => 0,
+            'errors'     => 0,
+            'total_rows' => 0,
+        ]);
 
-    return redirect()->route('contacts.index')->with('success', $message);
-}
+        $import = new ContactsImport($importLog->id);
+        Excel::import($import, $file);
+
+        // Mettre à jour les statistiques après import
+        $importLog->update([
+            'total_rows' => $import->getTotalRows(),
+            'imported'   => $import->getImported(),
+            'duplicates' => $import->getDuplicates(),
+            'errors'     => $import->getErrorCount(),
+        ]);
+
+        $errCount = $import->getErrorCount();
+        $imported = $import->getImported();
+        $dupes    = $import->getDuplicates();
+
+        $message = "Import terminé : {$imported} contact(s) ajouté(s)";
+        if ($dupes > 0)  $message .= ", {$dupes} doublon(s) ignoré(s)";
+        if ($errCount > 0) $message .= ", {$errCount} erreur(s)";
+        $message .= '.';
+
+        return redirect()->route('contacts.index')->with('success', $message);
+    }
+
+    /**
+     * Display the import history.
+     */
+    public function importHistory()
+    {
+        $imports = ImportLog::with('user')
+            ->withCount('contacts')
+            ->latest()
+            ->paginate(20);
+
+        return view('contacts.import-history', compact('imports'));
+    }
 }

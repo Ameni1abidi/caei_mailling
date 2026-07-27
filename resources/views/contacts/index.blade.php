@@ -15,6 +15,13 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2.5">
+                <a href="{{ route('contacts.import-history') }}" class="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-200/80 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Historique des imports
+                </a>
+
                 <form action="{{ route('contacts.import') }}" method="POST" enctype="multipart/form-data" class="inline-flex" x-data="{ loading: false }">
                     @csrf
                     <input type="file" name="file" id="file-upload" accept=".csv,.xlsx,.txt" class="hidden" x-on:change="loading = true; $el.closest('form').submit()">
@@ -58,6 +65,26 @@
             </div>
         @endif
 
+        {{-- Bandeau contextuel : filtrage par import --}}
+        @if(isset($importContext) && $importContext)
+            <div class="flex items-center justify-between gap-4 bg-violet-50 border border-violet-200 text-violet-900 p-4 rounded-xl text-sm font-medium shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="p-1.5 bg-violet-100 rounded-lg text-violet-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="font-bold">Filtrage par import :</span>
+                        {{ $importContext->filename }}
+                        <span class="ml-2 text-xs text-violet-600">{{ $importContext->created_at->format('d/m/Y \u00e0 H:i') }}</span>
+                    </div>
+                </div>
+                <a href="{{ route('contacts.import-history') }}" class="text-xs text-violet-600 hover:text-violet-800 font-semibold flex items-center gap-1">
+                    &larr; Retour à l'historique
+                </a>
+            </div>
+        @endif
         <!-- Stats Overview -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
@@ -67,7 +94,7 @@
                     </svg>
                 </div>
                 <div>
-                    <div class="text-2xl font-extrabold text-slate-900">{{ method_exists($contacts, 'total') ? $contacts->total() : $contacts->count() }}</div>
+                    <div class="text-2xl font-extrabold text-slate-900">{{ number_format($totalContacts) }}</div>
                     <div class="text-xs font-medium text-slate-500">Total contacts</div>
                 </div>
             </div>
@@ -169,7 +196,9 @@
                         @endif
                     </div>
                     <div class="text-xs text-slate-400 font-medium">
-                        Affichage de {{ $contacts->firstItem() ?? 0 }} à {{ $contacts->lastItem() ?? 0 }} sur {{ $contacts->total() ?? 0 }} contacts
+                        @if($contacts)
+                            Affichage de {{ $contacts->firstItem() ?? 0 }} à {{ $contacts->lastItem() ?? 0 }} sur {{ $contacts->total() ?? 0 }} contacts
+                        @endif
                     </div>
                 </div>
             </form>
@@ -182,7 +211,7 @@
                     <thead class="bg-slate-50/80 text-xs uppercase font-bold text-slate-500 border-b border-slate-200/80">
                         <tr>
                             <th class="px-6 py-4">Contact</th>
-                            <th class="px-6 py-4">Entreprise & Poste</th>
+                            <th class="px-6 py-4">Entreprise &amp; Poste</th>
                             <th class="px-6 py-4">Statut Prospect</th>
                             <th class="px-6 py-4">Coordonnées</th>
                             <th class="px-6 py-4">Localisation</th>
@@ -316,19 +345,14 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+                                <td colspan="8" class="px-6 py-12 text-center text-slate-400">
                                     <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
                                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                                         </svg>
                                     </div>
                                     <h3 class="text-base font-bold text-slate-800">Aucun contact trouvé</h3>
-                                    <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1">Commencez par ajouter votre premier contact ou importez un fichier CSV/Excel.</p>
-                                    <div class="pt-4 flex justify-center gap-3">
-                                        <a href="{{ route('contacts.create') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm">
-                                            Ajouter un contact
-                                        </a>
-                                    </div>
+                                    <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1">Aucun contact ne correspond à vos critères de recherche.</p>
                                 </td>
                             </tr>
                         @endforelse
@@ -336,7 +360,7 @@
                 </table>
             </div>
 
-            @if($contacts->hasPages())
+            @if($contacts && $contacts->hasPages())
                 <div class="px-6 py-4 border-t border-slate-200/80 bg-slate-50/50">
                     {{ $contacts->links() }}
                 </div>

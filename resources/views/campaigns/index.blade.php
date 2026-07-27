@@ -145,10 +145,14 @@
                                         </svg>
                                         @php
                                             $targetLabels = [];
-                                            foreach ($campaign->categoryIds() as $categoryId) {
-                                                $category = \App\Models\Category::find($categoryId);
-                                                if ($category) {
-                                                    $targetLabels[] = $category->name;
+                                            if ($campaign->importLog) {
+                                                $targetLabels[] = 'Import: ' . $campaign->importLog->filename;
+                                            } else {
+                                                foreach ($campaign->categoryIds() as $categoryId) {
+                                                    $category = \App\Models\Category::find($categoryId);
+                                                    if ($category) {
+                                                        $targetLabels[] = $category->name;
+                                                    }
                                                 }
                                             }
                                         @endphp
