@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('campaigns', CampaignController::class)->except(['show']);
     Route::get('campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('campaigns.preview');
+    Route::get('campaigns/recipient-count', [CampaignController::class, 'recipientCount'])->name('campaigns.recipient-count');
 
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
 

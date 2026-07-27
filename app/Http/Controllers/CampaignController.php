@@ -31,14 +31,15 @@ class CampaignController extends Controller
 
     public function create(Request $request)
     {
-        $categories = Category::orderBy('name')->get();
+        $categories = Category::withCount('contacts')->orderBy('name')->get();
+        $totalContacts = Contact::count();
         $template = null;
 
         if ($request->filled('template_id')) {
             $template = EmailTemplate::where('is_active', true)->findOrFail($request->template_id);
         }
 
-        return view('campaigns.create', compact('categories', 'template'));
+        return view('campaigns.create', compact('categories', 'template', 'totalContacts'));
     }
 
     public function store(Request $request)
@@ -56,16 +57,17 @@ class CampaignController extends Controller
     public function edit(Campaign $campaign)
     {
         $campaign->load('attachments');
-        $categories = Category::orderBy('name')->get();
+        $categories = Category::withCount('contacts')->orderBy('name')->get();
+        $totalContacts = Contact::count();
 
         $categoryIds = $campaign->categoryIds();
         $nbDestinataires = $categoryIds !== []
             ? Contact::query()->whereHas('categories', function ($query) use ($categoryIds) {
                 $query->whereIn('categories.id', $categoryIds);
             })->distinct()->count('contacts.id')
-            : Contact::count();
+            : $totalContacts;
 
-        return view('campaigns.edit', compact('campaign', 'categories', 'nbDestinataires'));
+        return view('campaigns.edit', compact('campaign', 'categories', 'nbDestinataires', 'totalContacts'));
     }
 
     public function update(Request $request, Campaign $campaign)
@@ -73,6 +75,26 @@ class CampaignController extends Controller
         $campaign->update($this->validatedCampaign($request));
 
         return redirect()->route('campaigns.edit', $campaign)->with('success', 'Campagne mise a jour.');
+    }
+
+    /**
+     * API endpoint : returns the distinct recipient count for given category IDs.
+     * GET /campaigns/recipient-count?category_ids[]=1&category_ids[]=2
+     * GET /campaigns/recipient-count  (no params → all contacts)
+     */
+    public function recipientCount(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $categoryIds = array_values(array_unique(array_filter(
+            array_map('intval', (array) $request->input('category_ids', []))
+        )));
+
+        $count = $categoryIds !== []
+            ? Contact::query()->whereHas('categories', function ($query) use ($categoryIds) {
+                $query->whereIn('categories.id', $categoryIds);
+            })->distinct()->count('contacts.id')
+            : Contact::count();
+
+        return response()->json(['count' => $count]);
     }
 
     public function destroy(Campaign $campaign)
