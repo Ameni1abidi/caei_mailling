@@ -14,6 +14,7 @@ class Campaign extends Model
         'contenu',
         'category_id',
         'category_ids',
+        'import_log_id',
         'date_envoi',
         'statut',
         'created_by'
@@ -33,6 +34,29 @@ class Campaign extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Get the target import file/batch for this campaign.
+     */
+    public function importLog(): BelongsTo
+    {
+        return $this->belongsTo(ImportLog::class, 'import_log_id');
+    }
+
+    public function importBatch(): BelongsTo
+    {
+        return $this->importLog();
+    }
+
+    public function getImportBatchIdAttribute()
+    {
+        return $this->import_log_id;
+    }
+
+    public function setImportBatchIdAttribute($value): void
+    {
+        $this->import_log_id = $value;
     }
 
     public function categoryIds(): array
