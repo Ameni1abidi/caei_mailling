@@ -12,9 +12,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('contacts', function (Blueprint $table) {
-            $table->renameColumn('status', 'prospect_status');
-        });
+        if (Schema::hasColumn('contacts', 'status') && ! Schema::hasColumn('contacts', 'prospect_status')) {
+            Schema::table('contacts', function (Blueprint $table) {
+                $table->renameColumn('status', 'prospect_status');
+            });
+        } elseif (! Schema::hasColumn('contacts', 'prospect_status')) {
+            Schema::table('contacts', function (Blueprint $table) {
+                $table->string('prospect_status')->default('Nouveau prospect')->after('source');
+            });
+        }
 
         // Also drop the duplicate 'last_interaction_at' column if it exists
         // (the code uses 'last_interaction' added by the prospect tracking migration)
@@ -30,8 +36,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('contacts', function (Blueprint $table) {
-            $table->renameColumn('prospect_status', 'status');
-        });
+        if (Schema::hasColumn('contacts', 'prospect_status') && ! Schema::hasColumn('contacts', 'status')) {
+            Schema::table('contacts', function (Blueprint $table) {
+                $table->renameColumn('prospect_status', 'status');
+            });
+        }
     }
 };
