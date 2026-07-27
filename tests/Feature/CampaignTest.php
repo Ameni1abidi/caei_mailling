@@ -200,4 +200,70 @@ class CampaignTest extends TestCase
         $this->assertFalse($campaign->markAsSentIfAllEmailsAreSent());
         $this->assertSame('en_cours', $campaign->refresh()->statut);
     }
+
+    public function test_can_retry_failed_campaign_emails(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+
+        $contact = Contact::create([
+            'nom' => 'Kouassi',
+            'prenom' => 'Jean',
+            'email' => 'jean.kouassi@example.com',
+        ]);
+
+        $campaign = Campaign::create([
+            'nom' => 'Campagne à relancer',
+            'objet' => 'Invitation',
+            'contenu' => 'Bonjour',
+            'statut' => 'envoyee',
+            'created_by' => $this->user->id,
+        ]);
+
+        $failedLog = EmailLog::create([
+            'campaign_id' => $campaign->id,
+            'contact_id' => $contact->id,
+            'status' => EmailLog::STATUS_FAILED,
+            'error_message' => 'Connection timeout',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->post(route('campaigns.retry-failed', $campaign));
+
+        $response->assertRedirect();
+        $this->assertSame(EmailLog::STATUS_PENDING, $failedLog->fresh()->status);
+        $this->assertNull($failedLog->fresh()->error_message);
+        $this->assertSame('en_cours', $campaign->fresh()->statut);
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendCampaignEmailJob::class);
+    }
+
+    public function test_can_cancel_campaign(): void
+    {
+        $contact = Contact::create([
+            'nom' => 'Kouassi',
+            'prenom' => 'Jean',
+            'email' => 'jean.kouassi@example.com',
+        ]);
+
+        $campaign = Campaign::create([
+            'nom' => 'Campagne à annuler',
+            'objet' => 'Invitation',
+            'contenu' => 'Bonjour',
+            'statut' => 'en_cours',
+            'created_by' => $this->user->id,
+        ]);
+
+        $pendingLog = EmailLog::create([
+            'campaign_id' => $campaign->id,
+            'contact_id' => $contact->id,
+            'status' => EmailLog::STATUS_PENDING,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->post(route('campaigns.cancel', $campaign));
+
+        $response->assertRedirect(route('campaigns.index'));
+        $this->assertSame('annulee', $campaign->fresh()->statut);
+        $this->assertSame(EmailLog::STATUS_FAILED, $pendingLog->fresh()->status);
+        $this->assertStringContainsString('annulée', $pendingLog->fresh()->error_message);
+    }
 }

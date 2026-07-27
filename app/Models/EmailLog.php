@@ -30,6 +30,7 @@ class EmailLog extends Model
         'campaign_id',
         'contact_id',
         'status',
+        'retry_count',
         'opened',
         'clicked',
         'error_message',
@@ -41,6 +42,7 @@ class EmailLog extends Model
         return [
             'opened' => 'boolean',
             'clicked' => 'boolean',
+            'retry_count' => 'integer',
             'sent_at' => 'datetime',
         ];
     }
