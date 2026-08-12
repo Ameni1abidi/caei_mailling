@@ -12,8 +12,10 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProspectController;
 
 Route::get('/', function () {
-    return view('welcome');
-});
+    return auth()->check()
+        ? redirect()->route('dashboard')
+        : redirect()->route('login');
+})->name('welcome');
 
 Route::get('/track/open/{log_id}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
 
