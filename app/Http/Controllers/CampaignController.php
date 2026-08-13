@@ -118,6 +118,17 @@ class CampaignController extends Controller
         $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
         $delayBetweenEmails = (int) ceil(60 / $rateLimit);
 
+        // Determine the queue connection: prefer Redis, fall back to database
+        $queueConnection = config('queue.default', 'database');
+        try {
+            if ($queueConnection === 'redis') {
+                \Illuminate\Support\Facades\Redis::connection()->ping();
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Redis non disponible, basculement sur la queue database pour retryFailed: ' . $e->getMessage());
+            $queueConnection = 'database';
+        }
+
         $relances = 0;
         foreach ($failedLogs as $log) {
             if (!$log->contact || !filter_var($log->contact->email, FILTER_VALIDATE_EMAIL)) {
@@ -131,7 +142,8 @@ class CampaignController extends Controller
 
             SendCampaignEmailJob::dispatch($campaign, $log->contact, $log->id)
                 ->delay(now()->addSeconds($relances * $delayBetweenEmails))
-                ->onQueue('emails');
+                ->onQueue('emails')
+                ->onConnection($queueConnection);
 
             $relances++;
         }
@@ -300,6 +312,18 @@ class CampaignController extends Controller
         $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
         $delayBetweenEmails = (int) ceil(60 / $rateLimit);
 
+        // Determine the queue connection: prefer Redis, fall back to database
+        $queueConnection = config('queue.default', 'database');
+        try {
+            // Test Redis connectivity before dispatching
+            if ($queueConnection === 'redis') {
+                \Illuminate\Support\Facades\Redis::connection()->ping();
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Redis non disponible, basculement sur la queue database: ' . $e->getMessage());
+            $queueConnection = 'database';
+        }
+
         foreach ($contacts as $index => $contact) {
             $emailLog = EmailLog::create([
                 'campaign_id' => $campaign->id,
@@ -309,7 +333,8 @@ class CampaignController extends Controller
 
             SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)
                 ->delay(now()->addSeconds($index * $delayBetweenEmails))
-                ->onQueue('emails');
+                ->onQueue('emails')
+                ->onConnection($queueConnection);
         }
 
         $campaign->update(['statut' => 'en_cours']);
