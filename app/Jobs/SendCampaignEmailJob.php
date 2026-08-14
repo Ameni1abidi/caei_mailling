@@ -61,13 +61,17 @@ class SendCampaignEmailJob implements ShouldQueue
 
             if ($smtp) {
                 $mailerName = 'dynamic_smtp';
+                // null encryption = no encryption (plain SMTP)
+                // OVH port 587 requires 'tls' (STARTTLS) — set in SmtpSetting
+                $encryption = $smtp->encryption ?? null;
                 Config::set("mail.mailers.{$mailerName}", [
                     'transport'  => $smtp->driver ?? 'smtp',
                     'host'       => $smtp->host,
                     'port'       => $smtp->port,
                     'username'   => $smtp->username,
                     'password'   => $smtp->password,
-                    'encryption' => $smtp->encryption,
+                    'encryption' => $encryption,
+                    'timeout'    => 30,
                 ]);
 
                 if ($smtp->sender_email) {
