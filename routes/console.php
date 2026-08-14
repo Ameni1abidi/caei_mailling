@@ -11,5 +11,6 @@ Artisan::command('inspire', function () {
 Schedule::command('campaigns:auto-retry')->everyFifteenMinutes();
 
 // Traitement automatique de la file d'attente des emails (s'arrête quand la file est vide)
-Schedule::command('queue:work --queue=emails,default --stop-when-empty --tries=3 --timeout=60')->everyMinute();
+Schedule::command('queue:work database --queue=emails,default --stop-when-empty --tries=3 --timeout=60')->everyMinute();
+
 
