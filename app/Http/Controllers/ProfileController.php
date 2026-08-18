@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+
 class ProfileController extends Controller
 {
     /**
@@ -16,8 +19,16 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+        $isAdmin = $user->hasRole('admin');
+        $users = $isAdmin ? User::with('roles')->latest()->get() : collect();
+        $roles = $isAdmin ? Role::orderBy('name')->pluck('name') : collect();
+
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'isAdmin' => $isAdmin,
+            'users' => $users,
+            'roles' => $roles,
         ]);
     }
 

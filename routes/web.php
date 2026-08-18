@@ -30,12 +30,9 @@ Route::middleware('auth')->group(function () {
     Route::get('contacts/import-history', [ContactController::class, 'importHistory'])->name('contacts.import-history');
     Route::resource('contacts', ContactController::class);
 
-    // MODULE 9 : Suivi des prospects
-    Route::get('prospects', [ProspectController::class, 'index'])->name('prospects.index');
-    Route::get('prospects/{contact}', [ProspectController::class, 'show'])->name('prospects.show');
-    Route::patch('prospects/{contact}/status', [ProspectController::class, 'updateStatus'])->name('prospects.update-status');
-    Route::post('prospects/{contact}/notes', [ProspectController::class, 'addNote'])->name('prospects.add-note');
-    Route::post('prospects/{contact}/followup', [ProspectController::class, 'scheduleFollowUp'])->name('prospects.schedule-followup');
+    Route::resource('categories', CategoryController::class);
+    Route::post('categories/{category}/add-contacts', [CategoryController::class, 'addContacts'])->name('categories.addContacts');
+    Route::delete('categories/{category}/remove-contact/{contact}', [CategoryController::class, 'removeContact'])->name('categories.removeContact');
 
     Route::resource('campaigns', CampaignController::class)->except(['show']);
     Route::get('campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('campaigns.preview');
@@ -50,7 +47,20 @@ Route::middleware('auth')->group(function () {
     Route::get('attachments/{attachment}/download', [CampaignAttachmentController::class, 'download'])->name('attachments.download');
 
     Route::middleware('role:admin')->group(function () {
-        Route::resource('users', UserController::class)->except(['show']);
+        // MODULE 9 : Suivi des prospects (Admin)
+        Route::get('prospects', [ProspectController::class, 'index'])->name('prospects.index');
+        Route::get('prospects/{contact}', [ProspectController::class, 'show'])->name('prospects.show');
+        Route::patch('prospects/{contact}/status', [ProspectController::class, 'updateStatus'])->name('prospects.update-status');
+        Route::post('prospects/{contact}/notes', [ProspectController::class, 'addNote'])->name('prospects.add-note');
+        Route::post('prospects/{contact}/followup', [ProspectController::class, 'scheduleFollowUp'])->name('prospects.schedule-followup');
+
+        // Paramètres SMTP (Admin)
+        Route::resource('smtp-settings', SmtpSettingController::class);
+        Route::post('smtp-settings/{smtp_setting}/test', [SmtpSettingController::class, 'testConnection'])->name('smtp-settings.test');
+        Route::post('smtp-settings/{smtp_setting}/activate', [SmtpSettingController::class, 'activate'])->name('smtp-settings.activate');
+
+        Route::get('users/monitoring', [UserController::class, 'monitoring'])->name('users.monitoring');
+        Route::resource('users', UserController::class);
 
         // GrapesJS Builder Routes
         Route::get('email-templates/{email_template}/builder', [EmailTemplateController::class, 'builder'])
@@ -70,15 +80,6 @@ Route::middleware('auth')->group(function () {
             ->name('email-templates.duplicate');
         Route::resource('email-templates', EmailTemplateController::class)->except(['show']);
     });
-
-    Route::resource('categories', CategoryController::class);
-    Route::post('categories/{category}/add-contacts', [CategoryController::class, 'addContacts'])->name('categories.addContacts');
-    Route::delete('categories/{category}/remove-contact/{contact}', [CategoryController::class, 'removeContact'])->name('categories.removeContact');
-
-    // Paramètres SMTP
-    Route::resource('smtp-settings', SmtpSettingController::class);
-    Route::post('smtp-settings/{smtp_setting}/test', [SmtpSettingController::class, 'testConnection'])->name('smtp-settings.test');
-    Route::post('smtp-settings/{smtp_setting}/activate', [SmtpSettingController::class, 'activate'])->name('smtp-settings.activate');
 });
 
 
