@@ -77,7 +77,8 @@
 
             </div>
 
-            <!-- MODULE 9 : Suivi des prospects -->
+            <!-- MODULE 9 : Suivi des prospects (Admin) -->
+            @if(Auth::user()?->hasRole('admin'))
             <div class="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 relative overflow-hidden">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div class="flex items-center space-x-3">
@@ -153,6 +154,7 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             <!-- Exemple de campagne -->
             <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
