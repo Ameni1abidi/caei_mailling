@@ -285,7 +285,9 @@ class CampaignController extends Controller
 
     public function send(Campaign $campaign)
     {
-        if ($campaign->statut !== 'brouillon') {
+        // Protection anti-doublon : verrouiller la ligne et vérifier le statut
+        $campaign = Campaign::lockForUpdate()->find($campaign->id);
+        if (!$campaign || $campaign->statut !== 'brouillon') {
             return back()->with('error', 'Cette campagne a déjà été envoyée ou est en cours.');
         }
 
@@ -293,19 +295,28 @@ class CampaignController extends Controller
             return back()->with('error', "Impossible d'envoyer une campagne sans contenu valide.");
         }
 
+        // Passer immédiatement en "en_cours" pour bloquer les double-clics
+        $campaign->update(['statut' => 'en_cours']);
+
+        // Filtrer les contacts actifs uniquement (exclure désinscrits, bounced, invalid)
+        $contactQuery = Contact::query()
+            ->where('status', 'active')
+            ->whereNull('unsubscribed_at');
+
         if ($campaign->import_log_id) {
-            $contacts = Contact::query()->where('import_log_id', $campaign->import_log_id)->get();
+            $contacts = $contactQuery->where('import_log_id', $campaign->import_log_id)->get();
         } else {
             $categoryIds = $campaign->categoryIds();
             $contacts = $categoryIds !== []
-                ? Contact::query()->whereHas('categories', function ($query) use ($categoryIds) {
+                ? $contactQuery->whereHas('categories', function ($query) use ($categoryIds) {
                     $query->whereIn('categories.id', $categoryIds);
                 })->get()
-                : Contact::all();
+                : $contactQuery->get();
         }
 
         if ($contacts->isEmpty()) {
-            return back()->with('error', 'Aucun contact à qui envoyer.');
+            $campaign->update(['statut' => 'brouillon']);
+            return back()->with('error', 'Aucun contact actif à qui envoyer.');
         }
 
         $smtp = SmtpSetting::where('is_active', true)->first();
@@ -325,6 +336,16 @@ class CampaignController extends Controller
         }
 
         foreach ($contacts as $index => $contact) {
+            // Éviter les doublons : vérifier qu'il n'y a pas déjà un log pending pour ce contact
+            $existingLog = EmailLog::where('campaign_id', $campaign->id)
+                ->where('contact_id', $contact->id)
+                ->whereIn('status', [EmailLog::STATUS_PENDING, EmailLog::STATUS_SENT])
+                ->first();
+
+            if ($existingLog) {
+                continue;
+            }
+
             $emailLog = EmailLog::create([
                 'campaign_id' => $campaign->id,
                 'contact_id' => $contact->id,
@@ -336,8 +357,6 @@ class CampaignController extends Controller
                 ->onQueue('emails')
                 ->onConnection($queueConnection);
         }
-
-        $campaign->update(['statut' => 'en_cours']);
 
         return redirect()->route('campaigns.index')
             ->with('success', "Campagne lancée : {$contacts->count()} emails en file d'attente.");
