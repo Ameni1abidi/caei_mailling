@@ -14,9 +14,8 @@ class UnsubscribeController extends Controller
     {
         $contact = Contact::where('email', $email)->first();
 
-        if ($contact && $contact->status !== 'unsubscribed') {
+        if ($contact && $contact->unsubscribed_at === null) {
             $contact->update([
-                'status' => 'unsubscribed',
                 'unsubscribed_at' => now(),
             ]);
         }

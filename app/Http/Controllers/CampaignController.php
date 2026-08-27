@@ -298,9 +298,8 @@ class CampaignController extends Controller
         // Passer immédiatement en "en_cours" pour bloquer les double-clics
         $campaign->update(['statut' => 'en_cours']);
 
-        // Filtrer les contacts actifs uniquement (exclure désinscrits, bounced, invalid)
+        // Filtrer les contacts non désinscrits uniquement
         $contactQuery = Contact::query()
-            ->where('status', 'active')
             ->whereNull('unsubscribed_at');
 
         if ($campaign->import_log_id) {

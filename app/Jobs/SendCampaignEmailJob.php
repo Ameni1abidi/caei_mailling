@@ -56,7 +56,7 @@ class SendCampaignEmailJob implements ShouldQueue
 
         // Vérifier si le contact s'est désinscrit entre temps
         $freshContact = Contact::find($this->contact->id);
-        if ($freshContact && ($freshContact->status === 'unsubscribed' || $freshContact->unsubscribed_at !== null)) {
+        if ($freshContact && $freshContact->unsubscribed_at !== null) {
             $emailLog->update([
                 'status' => EmailLog::STATUS_FAILED,
                 'error_message' => 'Contact désinscrit',

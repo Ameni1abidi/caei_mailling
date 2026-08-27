@@ -21,7 +21,6 @@ class Contact extends Model
         'ville',
         'secteur_activite',
         'source',
-        'status',
         'prospect_status',
         'unsubscribed_at',
         'bounced_at',
