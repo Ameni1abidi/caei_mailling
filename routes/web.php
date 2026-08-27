@@ -18,6 +18,7 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::get('/track/open/{log_id}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
+Route::get('/unsubscribe/{email}', [App\Http\Controllers\UnsubscribeController::class, 'unsubscribe'])->name('contact.unsubscribe');
 
 Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])

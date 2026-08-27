@@ -8,8 +8,13 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('campaigns:auto-retry')->everyFifteenMinutes();
+Schedule::command('campaigns:auto-retry')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();
 
 // Traitement automatique de la file d'attente des emails (s'arrête quand la file est vide)
-Schedule::command('queue:work --queue=emails,default --stop-when-empty --tries=3 --timeout=60')->everyMinute();
+Schedule::command('queue:work database --queue=emails,default --stop-when-empty --tries=3 --timeout=60')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 

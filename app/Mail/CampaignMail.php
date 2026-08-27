@@ -41,7 +41,17 @@ class CampaignMail extends Mailable
         $mail = $this->subject($this->objetPersonnalise)
             ->view('emails.campaign', [
                 'emailLogId' => $this->emailLogId,
+                'contact' => $this->contact,
+                'objetPersonnalise' => $this->objetPersonnalise,
             ]);
+
+        // Headers anti-spam obligatoires (requis par Gmail/Yahoo depuis 2024)
+        $unsubscribeUrl = route('contact.unsubscribe', ['email' => $this->contact->email]);
+        $mail->withSymfonyMessage(function ($message) use ($unsubscribeUrl) {
+            $message->getHeaders()->addTextHeader('List-Unsubscribe', "<{$unsubscribeUrl}>");
+            $message->getHeaders()->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
+            $message->getHeaders()->addTextHeader('Precedence', 'bulk');
+        });
 
         foreach ($this->campaign->attachments as $attachment) {
             if ($attachment->file_path && Storage::disk('public')->exists($attachment->file_path)) {
