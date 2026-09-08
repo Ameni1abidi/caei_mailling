@@ -162,17 +162,23 @@
                                 <td class="px-6 py-4">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition
                                         @if($campaign->statut === 'brouillon') bg-slate-50 text-slate-700 border-slate-200
-                                        @elseif($campaign->statut === 'envoyee') bg-emerald-50 text-emerald-700 border-emerald-200
+                                        @elseif($campaign->statut === 'envoyee')
+                                            @if(($campaign->failed_count ?? 0) > 0) bg-rose-50 text-rose-700 border-rose-200
+                                            @else bg-emerald-50 text-emerald-700 border-emerald-200 @endif
                                         @elseif($campaign->statut === 'annulee') bg-rose-50 text-rose-700 border-rose-200
                                         @else bg-amber-50 text-amber-700 border-amber-200 @endif">
                                         <span class="w-1.5 h-1.5 rounded-full 
                                             @if($campaign->statut === 'brouillon') bg-slate-400
-                                            @elseif($campaign->statut === 'envoyee') bg-emerald-500
+                                            @elseif($campaign->statut === 'envoyee')
+                                                @if(($campaign->failed_count ?? 0) > 0) bg-rose-500
+                                                @else bg-emerald-500 @endif
                                             @elseif($campaign->statut === 'annulee') bg-rose-500
                                             @else bg-amber-500 animate-pulse @endif"></span>
                                         <span>
                                             @if($campaign->statut === 'brouillon') Brouillon
-                                            @elseif($campaign->statut === 'envoyee') Envoyée
+                                            @elseif($campaign->statut === 'envoyee')
+                                                @if(($campaign->failed_count ?? 0) > 0) Échec d'envoi
+                                                @else Envoyée @endif
                                             @elseif($campaign->statut === 'annulee') Annulée
                                             @else En cours @endif
                                         </span>

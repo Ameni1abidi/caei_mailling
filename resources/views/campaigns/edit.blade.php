@@ -557,8 +557,26 @@
                                 <span>{{ $failedCount }} email(s) en échec</span>
                             </div>
                             <p class="text-xs text-rose-700 leading-relaxed font-medium">
-                                Des erreurs sont survenues lors du précédent envoi. Vous pouvez relancer uniquement les destinataires concernés.
+                                Des erreurs sont survenues lors du précédent envoi. Vous pouvez consulter les détails ci-dessous et relancer les destinataires.
                             </p>
+
+                            @if(isset($failedLogs) && $failedLogs->isNotEmpty())
+                                <div class="mt-2 space-y-2 max-h-48 overflow-y-auto border-t border-rose-200 pt-2 text-xs">
+                                    <span class="font-bold text-rose-900 block mb-1">Détail des erreurs d'envoi :</span>
+                                    @foreach($failedLogs as $log)
+                                        <div class="bg-white/90 p-2 rounded-lg border border-rose-200 text-slate-800">
+                                            <div class="font-bold text-rose-900 flex justify-between">
+                                                <span>{{ $log->contact?->email ?? 'Contact inconnu' }}</span>
+                                                <span class="text-[10px] uppercase font-semibold text-rose-600">{{ $log->status }}</span>
+                                            </div>
+                                            <div class="text-[11px] font-mono text-rose-700 break-words mt-1">
+                                                {{ $log->error_message ?? 'Aucun message d\'erreur explicite retourné' }}
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+
                             <form action="{{ route('campaigns.retry-failed', $campaign) }}" method="POST"
                                   onsubmit="return confirm('Relancer l\'envoi pour les {{ $failedCount }} email(s) en échec ?')">
                                 @csrf

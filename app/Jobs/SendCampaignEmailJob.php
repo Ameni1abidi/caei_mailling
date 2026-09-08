@@ -22,6 +22,7 @@ class SendCampaignEmailJob implements ShouldQueue
 
     public int $tries = 3;
     public int $backoff = 30;
+    public bool $deleteWhenMissingModels = true;
 
     public function __construct(
         public Campaign $campaign,
