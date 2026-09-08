@@ -206,13 +206,13 @@ class CampaignController extends Controller
 
     public function destroy(Campaign $campaign)
     {
-        if ($campaign->statut !== 'brouillon') {
-            return back()->with('error', 'Impossible de supprimer une campagne déjà envoyée ou en cours.');
+        if ($campaign->statut === 'en_cours') {
+            return back()->with('error', 'Impossible de supprimer une campagne en cours d\'envoi. Veuillez d\'abord l\'annuler.');
         }
 
         $campaign->delete();
 
-        return redirect()->route('campaigns.index')->with('success', 'Campagne supprimée.');
+        return redirect()->route('campaigns.index')->with('success', 'Campagne supprimée avec succès.');
     }
 
     public function preview(Campaign $campaign, Request $request)

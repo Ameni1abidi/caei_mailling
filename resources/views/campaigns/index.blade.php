@@ -218,8 +218,8 @@
                                             </form>
                                         @endif
 
-                                        @if($campaign->statut === 'brouillon')
-                                            <form action="{{ route('campaigns.destroy', $campaign) }}" method="POST" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?')">
+                                        @if($campaign->statut !== 'en_cours')
+                                            <form action="{{ route('campaigns.destroy', $campaign) }}" method="POST" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer la campagne « {{ $campaign->nom }} » ?')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Supprimer la campagne">

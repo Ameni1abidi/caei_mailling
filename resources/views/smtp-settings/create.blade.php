@@ -58,6 +58,7 @@
                                 class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             <option value="">-- Sélectionnez --</option>
                             <option value="SMTP personnalisé" {{ old('provider') === 'SMTP personnalisé' ? 'selected' : '' }}>SMTP personnalisé</option>
+                            <option value="OVHcloud SMTP" {{ old('provider') === 'OVHcloud SMTP' ? 'selected' : '' }}>OVHcloud SMTP</option>
                             <option value="Brevo (Sendinblue)" {{ old('provider') === 'Brevo (Sendinblue)' ? 'selected' : '' }}>Brevo (Sendinblue)</option>
                             <option value="Amazon SES" {{ old('provider') === 'Amazon SES' ? 'selected' : '' }}>Amazon SES</option>
                             <option value="Mailgun" {{ old('provider') === 'Mailgun' ? 'selected' : '' }}>Mailgun</option>
