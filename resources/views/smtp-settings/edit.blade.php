@@ -64,7 +64,7 @@
                                 class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             <option value="">-- Sélectionnez --</option>
                             @php
-                                $providers = ['SMTP personnalisé', 'Brevo (Sendinblue)', 'Amazon SES', 'Mailgun', 'SendGrid', 'Mailtrap'];
+                                $providers = ['SMTP personnalisé', 'OVHcloud SMTP', 'Brevo (Sendinblue)', 'Amazon SES', 'Mailgun', 'SendGrid', 'Mailtrap'];
                                 $currentProvider = old('provider', $smtpSetting->provider);
                             @endphp
                             @foreach($providers as $p)
