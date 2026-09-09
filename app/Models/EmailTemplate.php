@@ -100,34 +100,40 @@ class EmailTemplate extends Model
 
                 case 'image':
                 case 'logo':
-                    $src = (string) ($block['src'] ?? '/storage/logo-caei.png');
-                    $alt = (string) ($block['alt'] ?? 'Logo CAEI');
-                    $width = (string) ($block['width'] ?? 220);
-                    $html .= '<div style="margin:0 0 16px 0;"><img src="' . e($src) . '" alt="' . e($alt) . '" width="' . e($width) . '" style="max-width:100%; height:auto; display:block;" /></div>';
+                    $src = (string) ($block['src'] ?? '/images/logo-caei.jpg');
+                    if (str_contains($src, 'logo-caei') || empty($src) || $src === '/logo-caei.svg') {
+                        $src = '/images/logo-caei.jpg';
+                    }
+                    if (! str_starts_with($src, 'http://') && ! str_starts_with($src, 'https://') && ! str_starts_with($src, 'cid:')) {
+                        $src = url(ltrim($src, '/'));
+                    }
+                    $alt = (string) ($block['alt'] ?? 'CAEI COMPANY GROUP');
+                    $width = (string) ($block['width'] ?? 115);
+                    $html .= '<div style="margin:0 0 20px 0; text-align:center;"><img src="' . e($src) . '" alt="' . e($alt) . '" width="' . e($width) . '" style="max-width:100%; height:auto; display:inline-block; border-radius:50%;" /></div>';
                     break;
 
                 case 'button':
-                    $label = CampaignController::personnaliser((string) ($block['label'] ?? 'Bouton'), $contact, $extraVariables);
+                    $label = CampaignController::personnaliser((string) ($block['label'] ?? 'Découvrir le programme'), $contact, $extraVariables);
                     $url = CampaignController::personnaliser((string) ($block['url'] ?? '#'), $contact, $extraVariables);
-                    $color = (string) ($block['color'] ?? '#2563eb');
-                    $html .= '<div style="margin:0 0 16px 0;"><a href="' . e($url) . '" style="display:inline-block;background:' . e($color) . ';color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:600;">' . e($label) . '</a></div>';
+                    $color = (string) ($block['color'] ?? '#b45309');
+                    $html .= '<div style="margin:24px 0; text-align:center;"><a href="' . e($url) . '" style="display:inline-block;background:' . e($color) . ';color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:0.5px;box-shadow:0 3px 10px rgba(180,83,9,0.25);">' . e($label) . '</a></div>';
                     break;
 
                 case 'link':
                     $label = CampaignController::personnaliser((string) ($block['label'] ?? 'En savoir plus'), $contact, $extraVariables);
                     $url = CampaignController::personnaliser((string) ($block['url'] ?? '#'), $contact, $extraVariables);
-                    $html .= '<div style="margin:0 0 16px 0;"><a href="' . e($url) . '" style="color:#2563eb; text-decoration:underline;">' . e($label) . '</a></div>';
+                    $html .= '<div style="margin:0 0 16px 0;"><a href="' . e($url) . '" style="color:#b45309; text-decoration:underline; font-weight:600;">' . e($label) . '</a></div>';
                     break;
 
                 case 'signature':
-                    $content = CampaignController::personnaliser((string) ($block['content'] ?? ''), $contact, $extraVariables);
-                    $html .= '<div style="margin:0 0 16px 0; font-style:italic; color:#334155;">' . nl2br(e($content)) . '</div>';
+                    $content = CampaignController::personnaliser((string) ($block['content'] ?? "L’équipe CAEI COMPANY GROUP\nCabinet d'Audit, d'Expertise et d'Ingénierie"), $contact, $extraVariables);
+                    $html .= '<div style="margin:24px 0 0 0; padding-top:16px; border-top:1px solid #f1f5f9; font-style:italic; color:#334155; line-height:1.6;">' . nl2br(e($content)) . '</div>';
                     break;
 
                 case 'attachment':
                     $label = CampaignController::personnaliser((string) ($block['label'] ?? 'Pièce jointe'), $contact, $extraVariables);
                     $url = CampaignController::personnaliser((string) ($block['url'] ?? '#attachments'), $contact, $extraVariables);
-                    $html .= '<div style="margin:0 0 16px 0;"><a href="' . e($url) . '" style="color:#2563eb; text-decoration:underline;">' . e($label) . '</a></div>';
+                    $html .= '<div style="margin:0 0 16px 0;"><a href="' . e($url) . '" style="display:inline-flex; align-items:center; gap:6px; color:#b45309; text-decoration:none; font-weight:600; padding:8px 14px; background:#fffbeb; border:1px solid #fef3c7; border-radius:8px;">📎 ' . e($label) . '</a></div>';
                     break;
             }
         }

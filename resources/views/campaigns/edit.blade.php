@@ -368,21 +368,22 @@
                                         block.content = 'Bonjour @{{prenom}},\n\nVotre message ici.';
                                         block.align = 'left';
                                     } else if (type === 'image') {
-                                        block.src = '/logo-caei.svg';
-                                        block.alt = 'Logo CAEI';
-                                        block.width = 220;
+                                        block.src = '{{ asset('images/logo-caei.jpg') }}';
+                                        block.alt = 'CAEI COMPANY GROUP';
+                                        block.width = 115;
                                     } else if (type === 'logo') {
-                                        block.src = '/logo-caei.svg';
-                                        block.alt = 'Logo CAEI';
+                                        block.src = '{{ asset('images/logo-caei.jpg') }}';
+                                        block.alt = 'CAEI COMPANY GROUP';
+                                        block.width = 115;
                                     } else if (type === 'button') {
                                         block.label = 'Découvrir le programme';
                                         block.url = '@{{lien}}';
-                                        block.color = '#2563eb';
+                                        block.color = '#b45309';
                                     } else if (type === 'link') {
                                         block.label = 'En savoir plus';
                                         block.url = '@{{lien}}';
                                     } else if (type === 'signature') {
-                                        block.content = 'L’équipe CAEI';
+                                        block.content = "L’équipe CAEI COMPANY GROUP\nCabinet d'Audit, d'Expertise et d'Ingénierie\nwww.caei-afri.com";
                                     } else if (type === 'attachment') {
                                         block.label = 'Pièce jointe';
                                         block.url = '/attachments/mon-fichier.pdf';
@@ -414,23 +415,23 @@
 
                                         switch (block.type) {
                                             case 'text':
-                                                html += '<div style="margin:0 0 16px 0; text-align:' + (block.align || 'left') + ';"><p style="margin:0; line-height:1.7; color:#0f172a;">' + (block.content || '').replace(/\n/g, '<br>') + '</p></div>';
+                                                html += '<div style="margin:0 0 16px 0; text-align:' + (block.align || 'left') + ';"><p style="margin:0; line-height:1.75; color:#1e293b; font-size:15px;">' + (block.content || '').replace(/\n/g, '<br>') + '</p></div>';
                                                 break;
                                             case 'image':
                                             case 'logo':
-                                                html += '<div style="margin:0 0 16px 0;"><img src="' + (block.src || '/logo-caei.svg') + '" alt="' + (block.alt || 'Logo CAEI') + '" width="' + (block.width || 220) + '" style="max-width:100%; height:auto; display:block;" /></div>';
+                                                html += '<div style="margin:0 0 20px 0; text-align:center;"><img src="' + (block.src || '{{ asset('images/logo-caei.jpg') }}') + '" alt="' + (block.alt || 'CAEI COMPANY GROUP') + '" width="' + (block.width || 115) + '" style="max-width:100%; height:auto; display:inline-block; border-radius:50%;" /></div>';
                                                 break;
                                             case 'button':
-                                                html += '<div style="margin:0 0 16px 0;"><a href="' + (block.url || '#') + '" style="display:inline-block;background:' + (block.color || '#2563eb') + ';color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:600;">' + (block.label || 'Bouton') + '</a></div>';
+                                                html += '<div style="margin:24px 0; text-align:center;"><a href="' + (block.url || '#') + '" style="display:inline-block;background:' + (block.color || '#b45309') + ';color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:0.5px;box-shadow:0 3px 10px rgba(180,83,9,0.25);">' + (block.label || 'Bouton') + '</a></div>';
                                                 break;
                                             case 'link':
-                                                html += '<div style="margin:0 0 16px 0;"><a href="' + (block.url || '#') + '" style="color:#2563eb; text-decoration:underline;">' + (block.label || 'En savoir plus') + '</a></div>';
+                                                html += '<div style="margin:0 0 16px 0;"><a href="' + (block.url || '#') + '" style="color:#b45309; text-decoration:underline; font-weight:600;">' + (block.label || 'En savoir plus') + '</a></div>';
                                                 break;
                                             case 'signature':
-                                                html += '<div style="margin:0 0 16px 0; font-style:italic; color:#334155;">' + (block.content || '') + '</div>';
+                                                html += '<div style="margin:24px 0 0 0; padding-top:16px; border-top:1px solid #f1f5f9; font-style:italic; color:#334155; line-height:1.6;">' + (block.content || '') + '</div>';
                                                 break;
                                             case 'attachment':
-                                                html += '<div style="margin:0 0 16px 0;"><a href="' + (block.url || '#') + '" style="color:#2563eb; text-decoration:underline;">' + (block.label || 'Pièce jointe') + '</a></div>';
+                                                html += '<div style="margin:0 0 16px 0;"><a href="' + (block.url || '#') + '" style="display:inline-flex; align-items:center; gap:6px; color:#b45309; text-decoration:none; font-weight:600; padding:8px 14px; background:#fffbeb; border:1px solid #fef3c7; border-radius:8px;">📎 ' + (block.label || 'Pièce jointe') + '</a></div>';
                                                 break;
                                         }
                                     });

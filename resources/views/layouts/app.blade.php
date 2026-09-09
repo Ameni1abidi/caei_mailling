@@ -54,7 +54,10 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
                         </svg>
                     </button>
-                    <a href="{{ route('dashboard') }}" class="text-lg font-bold text-slate-900">CAEI</a>
+                    <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
+                        <img src="{{ asset('images/logo-caei.jpg') }}" alt="CAEI" class="h-8 w-8 rounded-full object-cover ring-1 ring-amber-500/50">
+                        <span class="text-base font-black text-slate-900 tracking-tight">CAEI</span>
+                    </a>
                     <div class="h-10 w-10"></div>
                 </header>
 

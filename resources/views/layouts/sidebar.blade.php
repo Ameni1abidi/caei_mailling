@@ -66,13 +66,11 @@
 
 <aside {{ ($attributes ?? new \Illuminate\View\ComponentAttributeBag)->merge(['class' => 'flex h-full w-72 flex-col bg-[#101d2f] text-slate-200 shadow-xl shadow-slate-950/20']) }}>
     <div class="flex h-20 items-center gap-3 px-6">
-        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-lime-100 text-slate-900 ring-2 ring-white/10">
-            <span class="text-xs font-extrabold leading-none">CAEI</span>
-        </div>
-        <div>
-            <div class="text-3xl font-bold leading-none tracking-normal text-white">CAEI</div>
-            <div class="mt-1 text-[10px] font-semibold uppercase tracking-normal text-slate-400">
-                Codicil - Audit - Formation
+        <img src="{{ asset('images/logo-caei.jpg') }}" alt="CAEI Logo" class="h-11 w-11 rounded-full object-cover bg-white ring-2 ring-amber-500/50 p-0.5 shadow-md shrink-0">
+        <div class="min-w-0">
+            <div class="text-xl font-black leading-none tracking-normal text-white">CAEI</div>
+            <div class="mt-1 text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                Company Group
             </div>
         </div>
     </div>
