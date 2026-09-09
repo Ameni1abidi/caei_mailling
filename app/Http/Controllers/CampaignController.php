@@ -11,6 +11,7 @@ use App\Models\EmailTemplate;
 use App\Models\ImportLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Models\SmtpSetting;
 use Illuminate\Validation\ValidationException;
 
@@ -27,12 +28,17 @@ class CampaignController extends Controller
             ->latest()
             ->paginate(20);
 
+        // Single query instead of 5 separate COUNT queries
+        $statsByStatus = Campaign::selectRaw('statut, COUNT(*) as cnt')
+            ->groupBy('statut')
+            ->pluck('cnt', 'statut');
+
         $stats = [
-            'total' => Campaign::count(),
-            'brouillon' => Campaign::where('statut', 'brouillon')->count(),
-            'en_cours' => Campaign::where('statut', 'en_cours')->count(),
-            'envoyee' => Campaign::where('statut', 'envoyee')->count(),
-            'annulee' => Campaign::where('statut', 'annulee')->count(),
+            'total'     => $statsByStatus->sum(),
+            'brouillon' => $statsByStatus->get('brouillon', 0),
+            'en_cours'  => $statsByStatus->get('en_cours', 0),
+            'envoyee'   => $statsByStatus->get('envoyee', 0),
+            'annulee'   => $statsByStatus->get('annulee', 0),
         ];
 
         return view('campaigns.index', compact('campaigns', 'stats'));
@@ -107,7 +113,7 @@ class CampaignController extends Controller
     {
         $failedLogs = EmailLog::where('campaign_id', $campaign->id)
             ->whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED])
-            ->with('contact')
+            ->with('contact:id,email')
             ->get();
 
         if ($failedLogs->isEmpty()) {
@@ -118,27 +124,30 @@ class CampaignController extends Controller
         $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
         $delayBetweenEmails = (int) ceil(60 / $rateLimit);
 
-        // Determine the queue connection: prefer Redis, fall back to database
-        $queueConnection = config('queue.default', 'database');
-        try {
-            if ($queueConnection === 'redis') {
-                \Illuminate\Support\Facades\Redis::connection()->ping();
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Redis non disponible, basculement sur la queue database pour retryFailed: ' . $e->getMessage());
-            $queueConnection = 'database';
-        }
+        $queueConnection = $this->resolveQueueConnection();
 
         $relances = 0;
+        $logIdsToReset = [];
+
         foreach ($failedLogs as $log) {
-            if (!$log->contact || !filter_var($log->contact->email, FILTER_VALIDATE_EMAIL)) {
+            if (! $log->contact || ! filter_var($log->contact->email, FILTER_VALIDATE_EMAIL)) {
                 continue;
             }
+            $logIdsToReset[] = $log->id;
+        }
 
-            $log->update([
-                'status' => EmailLog::STATUS_PENDING,
+        // Bulk reset status instead of individual updates
+        if (! empty($logIdsToReset)) {
+            EmailLog::whereIn('id', $logIdsToReset)->update([
+                'status'        => EmailLog::STATUS_PENDING,
                 'error_message' => null,
             ]);
+        }
+
+        foreach ($failedLogs as $log) {
+            if (! $log->contact || ! filter_var($log->contact->email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
 
             SendCampaignEmailJob::dispatch($campaign, $log->contact, $log->id)
                 ->delay(now()->addSeconds($relances * $delayBetweenEmails))
@@ -166,10 +175,11 @@ class CampaignController extends Controller
 
         $campaign->update(['statut' => 'annulee']);
 
+        // Bulk cancel all pending logs in one query
         EmailLog::where('campaign_id', $campaign->id)
             ->where('status', EmailLog::STATUS_PENDING)
             ->update([
-                'status' => EmailLog::STATUS_FAILED,
+                'status'        => EmailLog::STATUS_FAILED,
                 'error_message' => 'Campagne annulée par l\'utilisateur',
             ]);
 
@@ -178,10 +188,7 @@ class CampaignController extends Controller
     }
 
     /**
-     * API endpoint : returns the distinct recipient count for given target (import, category IDs, or all).
-     * GET /campaigns/recipient-count?import_log_id=1
-     * GET /campaigns/recipient-count?category_ids[]=1&category_ids[]=2
-     * GET /campaigns/recipient-count  (no params → all contacts)
+     * API endpoint : returns the distinct recipient count for given target.
      */
     public function recipientCount(Request $request): \Illuminate\Http\JsonResponse
     {
@@ -218,7 +225,7 @@ class CampaignController extends Controller
     public function preview(Campaign $campaign, Request $request)
     {
         $campaign->load(['attachments', 'importLog']);
-        
+
         if ($campaign->import_log_id) {
             $contactsQuery = Contact::query()->where('import_log_id', $campaign->import_log_id);
         } else {
@@ -241,13 +248,13 @@ class CampaignController extends Controller
             : $contactsDisponibles->first();
 
         $context = [
-            'campaign' => $campaign,
+            'campaign'      => $campaign,
             'nom_seminaire' => $campaign->nom,
-            'date' => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
+            'date'          => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
         ];
 
         $contenuPersonnalise = EmailTemplate::renderContent($campaign->contenu, $contact, $context);
-        $objetPersonnalise = $this->personnaliser($campaign->objet, $contact, $context);
+        $objetPersonnalise   = $this->personnaliser($campaign->objet, $contact, $context);
 
         return view('campaigns.preview', compact(
             'campaign',
@@ -262,20 +269,20 @@ class CampaignController extends Controller
     {
         $campaign = $extraVariables['campaign'] ?? null;
         $variables = [
-            'nom' => $contact?->nom ?? $extraVariables['nom'] ?? null,
-            'prenom' => $contact?->prenom ?? $extraVariables['prenom'] ?? null,
-            'entreprise' => $contact?->entreprise ?? $extraVariables['entreprise'] ?? null,
-            'fonction' => $contact?->fonction ?? $extraVariables['fonction'] ?? null,
-            'pays' => $contact?->pays ?? $extraVariables['pays'] ?? null,
+            'nom'           => $contact?->nom ?? $extraVariables['nom'] ?? null,
+            'prenom'        => $contact?->prenom ?? $extraVariables['prenom'] ?? null,
+            'entreprise'    => $contact?->entreprise ?? $extraVariables['entreprise'] ?? null,
+            'fonction'      => $contact?->fonction ?? $extraVariables['fonction'] ?? null,
+            'pays'          => $contact?->pays ?? $extraVariables['pays'] ?? null,
             'nom_seminaire' => $extraVariables['nom_seminaire'] ?? $campaign?->nom,
-            'date' => $extraVariables['date'] ?? $campaign?->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
-            'lien' => $extraVariables['lien'] ?? config('app.url'),
+            'date'          => $extraVariables['date'] ?? $campaign?->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
+            'lien'          => $extraVariables['lien'] ?? config('app.url'),
         ];
 
         $replacements = [];
         foreach ($variables as $key => $value) {
             $value = (string) ($value ?? '');
-            $replacements['{{' . $key . '}}'] = $value;
+            $replacements['{{' . $key . '}}']          = $value;
             $replacements['{{' . ucfirst($key) . '}}'] = $value;
             $replacements['{{' . strtoupper($key) . '}}'] = $value;
         }
@@ -287,7 +294,7 @@ class CampaignController extends Controller
     {
         // Protection anti-doublon : verrouiller la ligne et vérifier le statut
         $campaign = Campaign::lockForUpdate()->find($campaign->id);
-        if (!$campaign || $campaign->statut !== 'brouillon') {
+        if (! $campaign || $campaign->statut !== 'brouillon') {
             return back()->with('error', 'Cette campagne a déjà été envoyée ou est en cours.');
         }
 
@@ -298,100 +305,162 @@ class CampaignController extends Controller
         // Passer immédiatement en "en_cours" pour bloquer les double-clics
         $campaign->update(['statut' => 'en_cours']);
 
-        // Filtrer les contacts non désinscrits uniquement
+        // ─────────────────────────────────────────────────────────────────
+        // Build the base query — select only the columns we need
+        // ─────────────────────────────────────────────────────────────────
         $contactQuery = Contact::query()
-            ->whereNull('unsubscribed_at');
+            ->whereNull('unsubscribed_at')
+            ->select(['id', 'email', 'nom', 'prenom', 'entreprise', 'fonction', 'pays', 'prospect_status', 'import_log_id']);
 
         if ($campaign->import_log_id) {
-            $contacts = $contactQuery->where('import_log_id', $campaign->import_log_id)->get();
+            $contactQuery->where('import_log_id', $campaign->import_log_id);
         } else {
             $categoryIds = $campaign->categoryIds();
-            $contacts = $categoryIds !== []
-                ? $contactQuery->whereHas('categories', function ($query) use ($categoryIds) {
+            if ($categoryIds !== []) {
+                $contactQuery->whereHas('categories', function ($query) use ($categoryIds) {
                     $query->whereIn('categories.id', $categoryIds);
-                })->get()
-                : $contactQuery->get();
+                });
+            }
         }
 
-        if ($contacts->isEmpty()) {
+        // Pre-load existing logs for this campaign to avoid per-contact DB check
+        $existingContactIds = EmailLog::where('campaign_id', $campaign->id)
+            ->whereIn('status', [EmailLog::STATUS_PENDING, EmailLog::STATUS_SENT])
+            ->pluck('contact_id')
+            ->flip(); // O(1) lookup
+
+        $smtp              = SmtpSetting::where('is_active', true)->first();
+        $rateLimit         = max(1, (int) ($smtp?->rate_limit ?? 60));
+        $delayBetweenEmails = (int) ceil(60 / $rateLimit);
+        $queueConnection   = $this->resolveQueueConnection();
+
+        $totalDispatched = 0;
+        $jobIndex        = 0;
+        $chunkSize       = 500;
+
+        // ─────────────────────────────────────────────────────────────────
+        // Process contacts in chunks of 500 — never loads all into RAM
+        // ─────────────────────────────────────────────────────────────────
+        $contactQuery->chunkById($chunkSize, function ($contacts) use (
+            $campaign,
+            $existingContactIds,
+            $delayBetweenEmails,
+            $queueConnection,
+            &$jobIndex,
+            &$totalDispatched
+        ) {
+            $now = now();
+            $logsToInsert = [];
+
+            // Collect contacts that need a new log
+            $newContacts = $contacts->filter(function ($contact) use ($existingContactIds) {
+                return ! isset($existingContactIds[$contact->id]);
+            });
+
+            if ($newContacts->isEmpty()) {
+                return;
+            }
+
+            // Build bulk insert payload
+            foreach ($newContacts as $contact) {
+                $logsToInsert[] = [
+                    'campaign_id' => $campaign->id,
+                    'contact_id'  => $contact->id,
+                    'status'      => EmailLog::STATUS_PENDING,
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
+                ];
+            }
+
+            // Single INSERT for the whole chunk (500 rows = 1 query)
+            DB::table('email_logs')->insert($logsToInsert);
+
+            // Retrieve the auto-incremented IDs for the just-inserted logs
+            // We need them to pass to the jobs
+            $insertedLogs = EmailLog::where('campaign_id', $campaign->id)
+                ->where('status', EmailLog::STATUS_PENDING)
+                ->whereIn('contact_id', $newContacts->pluck('id'))
+                ->get(['id', 'contact_id'])
+                ->keyBy('contact_id');
+
+            // Dispatch one job per contact (non-blocking — they are queued)
+            foreach ($newContacts as $contact) {
+                $log = $insertedLogs->get($contact->id);
+                if (! $log) {
+                    continue;
+                }
+
+                SendCampaignEmailJob::dispatch($campaign, $contact, $log->id)
+                    ->delay(now()->addSeconds($jobIndex * $delayBetweenEmails))
+                    ->onQueue('emails')
+                    ->onConnection($queueConnection);
+
+                $jobIndex++;
+                $totalDispatched++;
+            }
+        });
+
+        if ($totalDispatched === 0) {
             $campaign->update(['statut' => 'brouillon']);
             return back()->with('error', 'Aucun contact actif à qui envoyer.');
         }
 
-        $smtp = SmtpSetting::where('is_active', true)->first();
-        $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
-        $delayBetweenEmails = (int) ceil(60 / $rateLimit);
-
-        // Determine the queue connection: prefer Redis, fall back to database
-        $queueConnection = config('queue.default', 'database');
-        try {
-            // Test Redis connectivity before dispatching
-            if ($queueConnection === 'redis') {
-                \Illuminate\Support\Facades\Redis::connection()->ping();
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Redis non disponible, basculement sur la queue database: ' . $e->getMessage());
-            $queueConnection = 'database';
-        }
-
-        foreach ($contacts as $index => $contact) {
-            // Éviter les doublons : vérifier qu'il n'y a pas déjà un log pending pour ce contact
-            $existingLog = EmailLog::where('campaign_id', $campaign->id)
-                ->where('contact_id', $contact->id)
-                ->whereIn('status', [EmailLog::STATUS_PENDING, EmailLog::STATUS_SENT])
-                ->first();
-
-            if ($existingLog) {
-                continue;
-            }
-
-            $emailLog = EmailLog::create([
-                'campaign_id' => $campaign->id,
-                'contact_id' => $contact->id,
-                'status' => EmailLog::STATUS_PENDING,
-            ]);
-
-            SendCampaignEmailJob::dispatch($campaign, $contact, $emailLog->id)
-                ->delay(now()->addSeconds($index * $delayBetweenEmails))
-                ->onQueue('emails')
-                ->onConnection($queueConnection);
-        }
-
         return redirect()->route('campaigns.index')
-            ->with('success', "Campagne lancée : {$contacts->count()} emails en file d'attente.");
+            ->with('success', "Campagne lancée : {$totalDispatched} emails en file d'attente.");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Determine the queue connection, preferring Redis when available.
+     */
+    private function resolveQueueConnection(): string
+    {
+        $connection = config('queue.default', 'database');
+        if ($connection === 'redis') {
+            try {
+                \Illuminate\Support\Facades\Redis::connection()->ping();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Redis non disponible, basculement sur la queue database: ' . $e->getMessage());
+                $connection = 'database';
+            }
+        }
+        return $connection;
     }
 
     private function validatedCampaign(Request $request): array
     {
         $validated = $request->validate([
-            'nom' => 'required|string|max:255',
-            'objet' => 'required|string|max:255',
-            'contenu' => 'required|string|min:3',
-            'category_id' => 'nullable|exists:categories,id',
-            'category_ids' => 'nullable|array',
-            'category_ids.*' => 'integer|exists:categories,id',
-            'import_log_id' => 'nullable|exists:import_logs,id',
-            'import_batch_id' => 'nullable|exists:import_logs,id',
-            'all_contacts' => 'nullable|boolean',
-            'targeting_mode' => 'nullable|string',
-            'auto_retry' => 'nullable|boolean',
+            'nom'              => 'required|string|max:255',
+            'objet'            => 'required|string|max:255',
+            'contenu'          => 'required|string|min:3',
+            'category_id'      => 'nullable|exists:categories,id',
+            'category_ids'     => 'nullable|array',
+            'category_ids.*'   => 'integer|exists:categories,id',
+            'import_log_id'    => 'nullable|exists:import_logs,id',
+            'import_batch_id'  => 'nullable|exists:import_logs,id',
+            'all_contacts'     => 'nullable|boolean',
+            'targeting_mode'   => 'nullable|string',
+            'auto_retry'       => 'nullable|boolean',
             'max_auto_retries' => 'nullable|integer|min:1|max:5',
         ]);
 
-        $validated['auto_retry'] = $request->boolean('auto_retry', true);
+        $validated['auto_retry']       = $request->boolean('auto_retry', true);
         $validated['max_auto_retries'] = max(1, (int) $request->input('max_auto_retries', 3));
 
-        $mode = $request->input('targeting_mode');
+        $mode        = $request->input('targeting_mode');
         $importLogId = $request->input('import_log_id', $request->input('import_batch_id'));
 
-        if ($mode === 'import' || ($importLogId && !$request->boolean('all_contacts') && empty($request->input('category_ids')))) {
-            $validated['import_log_id'] = (int) $importLogId;
-            $validated['category_id'] = null;
-            $validated['category_ids'] = [];
+        if ($mode === 'import' || ($importLogId && ! $request->boolean('all_contacts') && empty($request->input('category_ids')))) {
+            $validated['import_log_id']  = (int) $importLogId;
+            $validated['category_id']    = null;
+            $validated['category_ids']   = [];
         } elseif ($mode === 'all' || $request->boolean('all_contacts')) {
-            $validated['import_log_id'] = null;
-            $validated['category_id'] = null;
-            $validated['category_ids'] = [];
+            $validated['import_log_id']  = null;
+            $validated['category_id']    = null;
+            $validated['category_ids']   = [];
         } else {
             $categoryIds = $request->input('category_ids', []);
             if (empty($categoryIds) && $request->filled('category_id')) {
@@ -400,8 +469,8 @@ class CampaignController extends Controller
             $categoryIds = array_values(array_unique(array_map('intval', $categoryIds)));
 
             $validated['import_log_id'] = null;
-            $validated['category_id'] = $categoryIds !== [] && count($categoryIds) === 1 ? $categoryIds[0] : null;
-            $validated['category_ids'] = $categoryIds;
+            $validated['category_id']   = $categoryIds !== [] && count($categoryIds) === 1 ? $categoryIds[0] : null;
+            $validated['category_ids']  = $categoryIds;
         }
 
         $validated['contenu'] = EmailTemplate::sanitizeContent($validated['contenu']);
@@ -414,4 +483,3 @@ class CampaignController extends Controller
         return $validated;
     }
 }
-

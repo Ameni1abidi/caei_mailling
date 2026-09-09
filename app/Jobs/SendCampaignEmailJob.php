@@ -24,6 +24,13 @@ class SendCampaignEmailJob implements ShouldQueue
     public int $backoff = 30;
     public bool $deleteWhenMissingModels = true;
 
+    /**
+     * SMTP config cached for the lifetime of the worker process.
+     * Avoids a DB query on every single job execution.
+     */
+    private static ?array $cachedSmtpConfig = null;
+    private static bool $smtpCacheLoaded = false;
+
     public function __construct(
         public Campaign $campaign,
         public Contact $contact,
@@ -37,10 +44,11 @@ class SendCampaignEmailJob implements ShouldQueue
             return;
         }
 
+        // Single DB fetch for campaign — reuse for all checks below
         $campaign = Campaign::find($this->campaign->id);
-        if (!$campaign || $campaign->statut === 'annulee') {
+        if (! $campaign || $campaign->statut === 'annulee') {
             $emailLog->update([
-                'status' => EmailLog::STATUS_FAILED,
+                'status'        => EmailLog::STATUS_FAILED,
                 'error_message' => 'Campagne annulée par l\'utilisateur',
             ]);
             return;
@@ -48,49 +56,38 @@ class SendCampaignEmailJob implements ShouldQueue
 
         if (! filter_var($this->contact->email, FILTER_VALIDATE_EMAIL)) {
             $emailLog->update([
-                'status' => EmailLog::STATUS_INVALID,
+                'status'        => EmailLog::STATUS_INVALID,
                 'error_message' => 'Adresse email invalide',
             ]);
-            Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
+            $campaign->markAsSentIfAllEmailsAreSent();
             return;
         }
 
-        // Vérifier si le contact s'est désinscrit entre temps
-        $freshContact = Contact::find($this->contact->id);
-        if ($freshContact && $freshContact->unsubscribed_at !== null) {
+        // Re-check unsubscribe status using the already-serialized contact
+        // (avoid extra Contact::find() — use fresh() only when needed)
+        if ($this->contact->unsubscribed_at !== null) {
             $emailLog->update([
-                'status' => EmailLog::STATUS_FAILED,
+                'status'        => EmailLog::STATUS_FAILED,
                 'error_message' => 'Contact désinscrit',
             ]);
-            Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
+            $campaign->markAsSentIfAllEmailsAreSent();
             return;
         }
 
         try {
-            $smtp = SmtpSetting::where('is_active', true)->first();
+            $mailable = new CampaignMail($campaign, $this->contact, $this->emailLogId);
 
-            $mailable = new CampaignMail($this->campaign, $this->contact, $this->emailLogId);
+            $smtpConfig = $this->resolveSmtpConfig();
 
-            if ($smtp) {
+            if ($smtpConfig !== null) {
                 $mailerName = 'dynamic_smtp';
-                // null encryption = no encryption (plain SMTP)
-                // OVH port 465 requires 'ssl', port 587 requires 'tls' — set in SmtpSetting
-                $encryption = $smtp->encryption ?? null;
-                Config::set("mail.mailers.{$mailerName}", [
-                    'transport'  => $smtp->driver ?? 'smtp',
-                    'host'       => $smtp->host,
-                    'port'       => $smtp->port,
-                    'username'   => $smtp->username,
-                    'password'   => $smtp->password,
-                    'encryption' => $encryption,
-                    'timeout'    => 30,
-                ]);
+                Config::set("mail.mailers.{$mailerName}", $smtpConfig['mailer']);
 
-                if ($smtp->sender_email) {
-                    $mailable->from($smtp->sender_email, $smtp->sender_name);
+                if ($smtpConfig['sender_email']) {
+                    $mailable->from($smtpConfig['sender_email'], $smtpConfig['sender_name']);
                 }
-                if ($smtp->reply_to_email) {
-                    $mailable->replyTo($smtp->reply_to_email);
+                if ($smtpConfig['reply_to']) {
+                    $mailable->replyTo($smtpConfig['reply_to']);
                 }
 
                 Mail::mailer($mailerName)->to($this->contact->email)->send($mailable);
@@ -98,26 +95,28 @@ class SendCampaignEmailJob implements ShouldQueue
                 Mail::to($this->contact->email)->send($mailable);
             }
 
-            $emailLog->update([
-                'status' => EmailLog::STATUS_SENT,
+            // Single bulk-friendly update
+            EmailLog::where('id', $this->emailLogId)->update([
+                'status'  => EmailLog::STATUS_SENT,
                 'sent_at' => now(),
             ]);
 
-            // Mettre à jour le statut du prospect à "Email envoyé" si statut initial
+            // Advance prospect status (uses a conditional update internally)
             $this->contact->advanceStatusTo(Contact::STATUS_EMAIL_ENVOYE);
 
-            Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
-            sleep(1);
+            $campaign->markAsSentIfAllEmailsAreSent();
+
         } catch (\Throwable $e) {
             $status = $this->determineFailureStatus($e);
-            $emailLog->update([
-                'status' => $status,
-                'error_message' => $e->getMessage(),
+
+            EmailLog::where('id', $this->emailLogId)->update([
+                'status'        => $status,
+                'error_message' => substr($e->getMessage(), 0, 500),
             ]);
 
             Log::error("Échec envoi campagne #{$this->campaign->id} à {$this->contact->email} : " . $e->getMessage());
-            sleep(2);
-            Campaign::find($this->campaign->id)?->markAsSentIfAllEmailsAreSent();
+
+            $campaign->markAsSentIfAllEmailsAreSent();
             throw $e;
         }
     }
@@ -127,6 +126,40 @@ class SendCampaignEmailJob implements ShouldQueue
         EmailLog::where('id', $this->emailLogId)
             ->where('status', EmailLog::STATUS_PENDING)
             ->update(['status' => EmailLog::STATUS_FAILED]);
+    }
+
+    /**
+     * Resolve SMTP config with process-level cache.
+     * The config is fetched once per worker lifecycle, not once per job.
+     * Cache is busted on worker restart (which is fine — settings rarely change).
+     */
+    private function resolveSmtpConfig(): ?array
+    {
+        if (! self::$smtpCacheLoaded) {
+            $smtp = SmtpSetting::where('is_active', true)->first();
+            self::$smtpCacheLoaded = true;
+
+            if ($smtp) {
+                self::$cachedSmtpConfig = [
+                    'mailer' => [
+                        'transport'  => $smtp->driver ?? 'smtp',
+                        'host'       => $smtp->host,
+                        'port'       => $smtp->port,
+                        'username'   => $smtp->username,
+                        'password'   => $smtp->password,
+                        'encryption' => $smtp->encryption ?? null,
+                        'timeout'    => 30,
+                    ],
+                    'sender_email' => $smtp->sender_email ?? null,
+                    'sender_name'  => $smtp->sender_name ?? null,
+                    'reply_to'     => $smtp->reply_to_email ?? null,
+                ];
+            } else {
+                self::$cachedSmtpConfig = null;
+            }
+        }
+
+        return self::$cachedSmtpConfig;
     }
 
     private function determineFailureStatus(\Throwable $exception): string
