@@ -34,11 +34,12 @@ class CampaignController extends Controller
             ->pluck('cnt', 'statut');
 
         $stats = [
-            'total'     => $statsByStatus->sum(),
-            'brouillon' => $statsByStatus->get('brouillon', 0),
-            'en_cours'  => $statsByStatus->get('en_cours', 0),
-            'envoyee'   => $statsByStatus->get('envoyee', 0),
-            'annulee'   => $statsByStatus->get('annulee', 0),
+            'total'      => $statsByStatus->sum(),
+            'brouillon'  => $statsByStatus->get('brouillon', 0),
+            'programmee' => $statsByStatus->get('programmee', 0),
+            'en_cours'   => $statsByStatus->get('en_cours', 0),
+            'envoyee'    => $statsByStatus->get('envoyee', 0),
+            'annulee'    => $statsByStatus->get('annulee', 0),
         ];
 
         return view('campaigns.index', compact('campaigns', 'stats'));
@@ -376,7 +377,6 @@ class CampaignController extends Controller
             DB::table('email_logs')->insert($logsToInsert);
 
             // Retrieve the auto-incremented IDs for the just-inserted logs
-            // We need them to pass to the jobs
             $insertedLogs = EmailLog::where('campaign_id', $campaign->id)
                 ->where('status', EmailLog::STATUS_PENDING)
                 ->whereIn('contact_id', $newContacts->pluck('id'))
@@ -407,6 +407,51 @@ class CampaignController extends Controller
 
         return redirect()->route('campaigns.index')
             ->with('success', "Campagne lancée : {$totalDispatched} emails en file d'attente.");
+    }
+
+    /**
+     * Programmer une campagne pour envoi à une date/heure future.
+     */
+    public function scheduleCampaign(Campaign $campaign, Request $request)
+    {
+        $campaign = Campaign::lockForUpdate()->find($campaign->id);
+        if (! $campaign || ! in_array($campaign->statut, ['brouillon', 'programmee'])) {
+            return back()->with('error', 'Seules les campagnes en brouillon peuvent être programmées.');
+        }
+
+        $request->validate([
+            'date_envoi' => 'required|date|after:now',
+        ], [
+            'date_envoi.required' => 'Veuillez sélectionner une date et heure d\'envoi.',
+            'date_envoi.after'    => 'La date d\'envoi doit être dans le futur.',
+        ]);
+
+        if (! EmailTemplate::hasValidContent($campaign->contenu)) {
+            return back()->with('error', "Impossible de programmer une campagne sans contenu valide.");
+        }
+
+        $campaign->update([
+            'statut'     => 'programmee',
+            'date_envoi' => $request->input('date_envoi'),
+        ]);
+
+        $dateFormatee = \Carbon\Carbon::parse($request->input('date_envoi'))->format('d/m/Y à H:i');
+        return redirect()->route('campaigns.index')
+            ->with('success', "Campagne programmée pour le {$dateFormatee}. Elle sera envoyée automatiquement.");
+    }
+
+    /**
+     * Annuler la programmation d'une campagne (retour en brouillon).
+     */
+    public function unscheduleCampaign(Campaign $campaign)
+    {
+        if ($campaign->statut !== 'programmee') {
+            return back()->with('error', 'Cette campagne n\'est pas programmée.');
+        }
+
+        $campaign->update(['statut' => 'brouillon', 'date_envoi' => null]);
+
+        return back()->with('success', 'Programmation annulée. La campagne est repassée en brouillon.');
     }
 
     // ─────────────────────────────────────────────────────────────────────

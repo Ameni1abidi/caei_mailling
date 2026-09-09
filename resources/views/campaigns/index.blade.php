@@ -107,6 +107,18 @@
                     <div class="text-xs font-medium text-slate-500">Envoyées</div>
                 </div>
             </div>
+
+            <div class="bg-white p-4 rounded-xl border border-purple-200/80 shadow-sm flex items-center gap-3.5">
+                <div class="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-extrabold text-purple-700">{{ $stats['programmee'] ?? 0 }}</div>
+                    <div class="text-xs font-medium text-slate-500">Programmées</div>
+                </div>
+            </div>
         </div>
 
         <!-- Table View -->
@@ -162,13 +174,15 @@
                                 <td class="px-6 py-4">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition
                                         @if($campaign->statut === 'brouillon') bg-slate-50 text-slate-700 border-slate-200
+                                        @elseif($campaign->statut === 'programmee') bg-purple-50 text-purple-700 border-purple-200
                                         @elseif($campaign->statut === 'envoyee')
                                             @if(($campaign->failed_count ?? 0) > 0) bg-rose-50 text-rose-700 border-rose-200
                                             @else bg-emerald-50 text-emerald-700 border-emerald-200 @endif
                                         @elseif($campaign->statut === 'annulee') bg-rose-50 text-rose-700 border-rose-200
                                         @else bg-amber-50 text-amber-700 border-amber-200 @endif">
-                                        <span class="w-1.5 h-1.5 rounded-full 
+                                        <span class="w-1.5 h-1.5 rounded-full
                                             @if($campaign->statut === 'brouillon') bg-slate-400
+                                            @elseif($campaign->statut === 'programmee') bg-purple-500 animate-pulse
                                             @elseif($campaign->statut === 'envoyee')
                                                 @if(($campaign->failed_count ?? 0) > 0) bg-rose-500
                                                 @else bg-emerald-500 @endif
@@ -176,6 +190,8 @@
                                             @else bg-amber-500 animate-pulse @endif"></span>
                                         <span>
                                             @if($campaign->statut === 'brouillon') Brouillon
+                                            @elseif($campaign->statut === 'programmee')
+                                                📅 {{ $campaign->date_envoi?->format('d/m H:i') ?? 'Programmée' }}
                                             @elseif($campaign->statut === 'envoyee')
                                                 @if(($campaign->failed_count ?? 0) > 0) Échec d'envoi
                                                 @else Envoyée @endif

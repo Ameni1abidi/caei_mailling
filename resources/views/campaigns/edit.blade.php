@@ -600,6 +600,42 @@
                                 L'envoi de cette campagne a été annulé par l'utilisateur.
                             </div>
                         </div>
+                    @elseif($campaign->statut === 'programmee')
+                        {{-- Campagne déjà programmée --}}
+                        <div class="bg-purple-50 border border-purple-200 text-purple-950 p-4 rounded-xl space-y-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-purple-800 uppercase tracking-wider">
+                                <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>Envoi programmé</span>
+                            </div>
+                            <div class="text-sm font-bold text-purple-900">
+                                📅 {{ $campaign->date_envoi?->format('d/m/Y à H:i') ?? 'Date non définie' }}
+                            </div>
+                            <p class="text-xs text-purple-700 leading-relaxed">
+                                La campagne sera automatiquement envoyée à cette date. Le cron vérifie chaque minute.
+                            </p>
+                            {{-- Modifier la date --}}
+                            <form action="{{ route('campaigns.schedule-send', $campaign) }}" method="POST" class="space-y-2 border-t border-purple-200 pt-3">
+                                @csrf
+                                <label class="block text-xs font-bold text-purple-800">Modifier la date d'envoi :</label>
+                                <input type="datetime-local" name="date_envoi"
+                                       value="{{ $campaign->date_envoi?->format('Y-m-d\TH:i') }}"
+                                       min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}"
+                                       class="w-full text-sm py-2 px-3 rounded-lg border border-purple-200 bg-white focus:ring-2 focus:ring-purple-400 focus:outline-none" required>
+                                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition">
+                                    Modifier la programmation
+                                </button>
+                            </form>
+                            {{-- Annuler la programmation --}}
+                            <form action="{{ route('campaigns.unschedule', $campaign) }}" method="POST"
+                                  onsubmit="return confirm('Annuler la programmation ? La campagne repassera en brouillon.')">
+                                @csrf
+                                <button type="submit" class="w-full border border-purple-300 text-purple-700 hover:bg-purple-100 text-xs font-semibold py-2 px-4 rounded-lg transition">
+                                    Annuler la programmation
+                                </button>
+                            </form>
+                        </div>
                     @elseif($campaign->statut === 'brouillon')
                         <div class="bg-emerald-50 border border-emerald-100 text-emerald-950 p-4 rounded-xl space-y-3.5">
                             <div class="text-xs leading-relaxed font-semibold text-emerald-800">
@@ -615,6 +651,48 @@
                                     <span>Lancer la campagne</span>
                                 </button>
                             </form>
+                        </div>
+
+                        {{-- Panneau de programmation --}}
+                        <div class="bg-white border border-purple-200 rounded-2xl p-5 space-y-3 mt-2" x-data="{ open: false }">
+                            <button type="button" @click="open = !open"
+                                    class="flex items-center justify-between w-full text-left">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span class="text-sm font-bold text-slate-800">Programmer l'envoi</span>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+
+                            <div x-show="open" x-transition class="space-y-3 border-t border-purple-100 pt-3">
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    Choisissez une date et heure d'envoi. La campagne sera déclenchée automatiquement par le cron chaque minute.
+                                </p>
+                                <form action="{{ route('campaigns.schedule-send', $campaign) }}" method="POST" class="space-y-3">
+                                    @csrf
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-1">Date et heure d'envoi <span class="text-rose-500">*</span></label>
+                                        <input type="datetime-local" name="date_envoi"
+                                               min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}"
+                                               class="w-full text-sm py-2.5 px-3 rounded-xl border border-purple-200 bg-purple-50/40 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none"
+                                               required>
+                                        @error('date_envoi')
+                                            <p class="text-xs text-rose-600 mt-1 font-semibold">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                    <button type="submit"
+                                            class="inline-flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition duration-150">
+                                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                        <span>Confirmer la programmation</span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     @else
                         <div class="bg-slate-50 border border-slate-200 text-slate-500 p-4 rounded-xl space-y-3 text-center">
