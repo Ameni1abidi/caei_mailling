@@ -20,6 +20,32 @@ Route::get('/', function () {
 Route::get('/track/open/{log_id}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
 Route::get('/unsubscribe/{email}', [App\Http\Controllers\UnsubscribeController::class, 'unsubscribe'])->name('contact.unsubscribe');
 
+// Route Cron sécurisée appelée par cron-job.org pour traiter la file d'attente automatiquement
+Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
+    $token = env('CRON_TOKEN', 'caei-cron-secret-2026');
+    if ($request->query('token') !== $token) {
+        return response()->json(['error' => 'Non autorisé'], 403);
+    }
+
+    @set_time_limit(120);
+
+    \Illuminate\Support\Facades\Artisan::call('queue:work', [
+        'connection' => 'database',
+        '--queue' => 'emails,default',
+        '--stop-when-empty' => true,
+        '--tries' => 3,
+        '--timeout' => 60,
+    ]);
+
+    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Queue worker exécuté avec succès',
+        'time' => now()->toDateTimeString(),
+    ]);
+});
+
 Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
