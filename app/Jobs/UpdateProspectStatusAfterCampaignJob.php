@@ -5,85 +5,123 @@ namespace App\Jobs;
 use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\EmailLog;
-use App\Models\ProspectInteraction;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 
 class UpdateProspectStatusAfterCampaign implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(
         public Campaign $campaign
-    ) {
-    }
+    ) {}
 
     /**
      * Execute the job.
+     *
+     * Uses bulk UPDATE statements instead of per-contact loops.
+     * For a campaign with 1M recipients this goes from ~5M queries to ~4 queries.
      */
     public function handle(): void
     {
-        // Récupérer tous les emails logs de cette campagne
-        $emailLogs = $this->campaign->emailLogs()->with('contact')->get();
+        $campaignId = $this->campaign->id;
+        $now        = now();
 
-        foreach ($emailLogs as $log) {
-            $contact = $log->contact;
+        // ── 1. Bulk-update contacts whose email was sent/delivered ───────
+        //    Only advance "Nouveau prospect" → "Email envoyé"
+        $sentContactIds = DB::table('email_logs')
+            ->where('campaign_id', $campaignId)
+            ->whereIn('status', [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED])
+            ->pluck('contact_id');
 
-            if (in_array($log->status, [EmailLog::STATUS_DELIVERED, EmailLog::STATUS_SENT], true)) {
-                // Mettre à jour le statut à "Email envoyé" s'il est en phase initiale
-                if ($contact->prospect_status === Contact::STATUS_NOUVEAU) {
-                    $contact->updateStatusWithLog(
-                        Contact::STATUS_EMAIL_ENVOYE,
-                        "Email de la campagne '{$this->campaign->nom}' envoyé"
-                    );
-                }
-
-                // Log interaction email sent
-                $contact->logInteraction(
-                    ProspectInteraction::TYPE_EMAIL_SENT,
-                    "Email envoyé: {$this->campaign->nom}",
-                    $this->campaign->id,
-                    ['subject' => $this->campaign->objet]
-                );
-
-                // Mettre à jour last_campaign_id et last_interaction
-                $contact->update([
-                    'last_campaign_id' => $this->campaign->id,
-                    'last_interaction' => $log->sent_at ?? now(),
+        if ($sentContactIds->isNotEmpty()) {
+            // Advance status for contacts still at "Nouveau prospect"
+            DB::table('contacts')
+                ->whereIn('id', $sentContactIds)
+                ->where('prospect_status', Contact::STATUS_NOUVEAU)
+                ->update([
+                    'prospect_status'  => Contact::STATUS_EMAIL_ENVOYE,
+                    'last_campaign_id' => $campaignId,
+                    'last_interaction' => $now,
+                    'updated_at'       => $now,
                 ]);
-            }
 
-            if ($log->opened) {
-                // Mettre à jour le statut à "Email ouvert"
-                if (in_array($contact->prospect_status, [Contact::STATUS_NOUVEAU, Contact::STATUS_EMAIL_ENVOYE])) {
-                    $contact->updateStatusWithLog(
-                        Contact::STATUS_EMAIL_OUVERT,
-                        "Email de la campagne '{$this->campaign->nom}' ouvert"
-                    );
-                }
-
-                // Log interaction email opened
-                $contact->logInteraction(
-                    ProspectInteraction::TYPE_EMAIL_OPENED,
-                    "Email ouvert: {$this->campaign->nom}",
-                    $this->campaign->id
-                );
-            }
-
-            if ($log->clicked) {
-                // Log interaction email clicked
-                $contact->logInteraction(
-                    ProspectInteraction::TYPE_EMAIL_CLICKED,
-                    "Lien cliqué dans l'email: {$this->campaign->nom}",
-                    $this->campaign->id
-                );
-            }
+            // Also update last_campaign_id / last_interaction for contacts
+            // that were already beyond "Nouveau" (don't overwrite status)
+            DB::table('contacts')
+                ->whereIn('id', $sentContactIds)
+                ->where('prospect_status', '!=', Contact::STATUS_NOUVEAU)
+                ->update([
+                    'last_campaign_id' => $campaignId,
+                    'last_interaction' => $now,
+                    'updated_at'       => $now,
+                ]);
         }
+
+        // ── 2. Bulk-update contacts who opened the email ─────────────────
+        //    Advance "Nouveau prospect" or "Email envoyé" → "Email ouvert"
+        $openedContactIds = DB::table('email_logs')
+            ->where('campaign_id', $campaignId)
+            ->where('opened', true)
+            ->pluck('contact_id');
+
+        if ($openedContactIds->isNotEmpty()) {
+            DB::table('contacts')
+                ->whereIn('id', $openedContactIds)
+                ->whereIn('prospect_status', [
+                    Contact::STATUS_NOUVEAU,
+                    Contact::STATUS_EMAIL_ENVOYE,
+                ])
+                ->update([
+                    'prospect_status' => Contact::STATUS_EMAIL_OUVERT,
+                    'updated_at'      => $now,
+                ]);
+        }
+
+        // ── 3. Bulk-insert prospect interactions (sent) ──────────────────
+        //    Insert in chunks to stay within MySQL max_allowed_packet
+        $sentLogs = DB::table('email_logs')
+            ->where('campaign_id', $campaignId)
+            ->whereIn('status', [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED])
+            ->select('contact_id', 'sent_at')
+            ->get();
+
+        $sentLogs->chunk(500)->each(function ($chunk) use ($campaignId, $now) {
+            $rows = $chunk->map(fn ($log) => [
+                'contact_id'  => $log->contact_id,
+                'campaign_id' => $campaignId,
+                'type'        => 'email_sent',
+                'description' => "Email de la campagne envoyé (campagne #{$campaignId})",
+                'metadata'    => null,
+                'created_at'  => $log->sent_at ?? $now,
+                'updated_at'  => $now,
+            ])->toArray();
+
+            DB::table('prospect_interactions')->insert($rows);
+        });
+
+        // ── 4. Bulk-insert prospect interactions (opened) ────────────────
+        $openedLogs = DB::table('email_logs')
+            ->where('campaign_id', $campaignId)
+            ->where('opened', true)
+            ->pluck('contact_id');
+
+        $openedLogs->chunk(500)->each(function ($chunk) use ($campaignId, $now) {
+            $rows = $chunk->map(fn ($contactId) => [
+                'contact_id'  => $contactId,
+                'campaign_id' => $campaignId,
+                'type'        => 'email_opened',
+                'description' => "Email ouvert (campagne #{$campaignId})",
+                'metadata'    => null,
+                'created_at'  => $now,
+                'updated_at'  => $now,
+            ])->toArray();
+
+            DB::table('prospect_interactions')->insert($rows);
+        });
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Campaign extends Model
 {
@@ -113,22 +114,26 @@ class Campaign extends Model
 
     public function markAsSentIfAllEmailsAreSent(): bool
     {
-        if (! $this->emailLogs()->exists()) {
-            return false;
-        }
-
-        $hasPendingEmails = $this->emailLogs()
-            ->where('status', EmailLog::STATUS_PENDING)
-            ->exists();
-
-        if ($hasPendingEmails) {
-            return false;
-        }
-
-        return $this->newQuery()
-            ->whereKey($this->id)
+        // Single conditional UPDATE — avoids two SELECT queries.
+        // Uses a NOT EXISTS subquery so we only flip to "envoyee"
+        // when there are logs AND none are still pending.
+        $updated = \Illuminate\Support\Facades\DB::table('campaigns')
+            ->where('id', $this->id)
             ->where('statut', 'en_cours')
-            ->update(['statut' => 'envoyee']) > 0;
+            ->whereExists(function ($query) {
+                $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('email_logs')
+                    ->whereColumn('email_logs.campaign_id', 'campaigns.id');
+            })
+            ->whereNotExists(function ($query) {
+                $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('email_logs')
+                    ->whereColumn('email_logs.campaign_id', 'campaigns.id')
+                    ->where('email_logs.status', EmailLog::STATUS_PENDING);
+            })
+            ->update(['statut' => 'envoyee', 'updated_at' => now()]);
+
+        return $updated > 0;
     }
 
     public function sentCount(): int
