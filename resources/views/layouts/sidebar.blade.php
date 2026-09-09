@@ -1,31 +1,31 @@
 @php
     $links = [
-        ['label' => 'Tableau de bord', 'route' => 'dashboard', 'active' => 'dashboard', 'icon' => 'dashboard'],
-        ['label' => 'Contacts', 'route' => 'contacts.index', 'active' => 'contacts.*', 'icon' => 'contacts'],
-        ['label' => 'Listes', 'route' => 'categories.index', 'active' => 'categories.*', 'icon' => 'lists'],
-        ['label' => 'Campagnes', 'route' => 'campaigns.index', 'active' => 'campaigns.*', 'icon' => 'campaigns'],
-        ['label' => 'Suivi des prospects', 'route' => 'prospects.index', 'active' => 'prospects.*', 'icon' => 'prospects'],
-        ['label' => 'Pièces jointes', 'route' => 'attachments.index', 'active' => 'attachments.*', 'icon' => 'files'],
-        ['label' => 'Parametres SMTP', 'route' => 'smtp-settings.index', 'active' => 'smtp-settings.*', 'icon' => 'smtp'],
+        ['label' => 'Tableau de bord',    'route' => 'dashboard',          'active' => 'dashboard',        'icon' => 'dashboard'],
+        ['label' => 'Contacts',           'route' => 'contacts.index',     'active' => 'contacts.*',       'icon' => 'contacts'],
+        ['label' => 'Listes',             'route' => 'categories.index',   'active' => 'categories.*',     'icon' => 'lists'],
+        ['label' => 'Campagnes',          'route' => 'campaigns.index',    'active' => 'campaigns.*',      'icon' => 'campaigns'],
+        ['label' => 'Suivi des prospects','route' => 'prospects.index',    'active' => 'prospects.*',      'icon' => 'prospects'],
+        ['label' => 'Statistiques',       'route' => 'statistics.index',   'active' => 'statistics.*',     'icon' => 'stats'],
+        ['label' => 'Pièces jointes',     'route' => 'attachments.index',  'active' => 'attachments.*',    'icon' => 'files'],
+        ['label' => 'Parametres SMTP',    'route' => 'smtp-settings.index','active' => 'smtp-settings.*', 'icon' => 'smtp'],
     ];
 
     if (Auth::user()?->hasRole('admin')) {
         array_splice($links, 4, 0, [[
-            'label' => 'Templates',
-            'route' => 'email-templates.index',
+            'label'  => 'Templates',
+            'route'  => 'email-templates.index',
             'active' => 'email-templates.*',
-            'icon' => 'templates',
+            'icon'   => 'templates',
         ], [
-            'label' => 'Utilisateurs',
-            'route' => 'users.index',
+            'label'  => 'Utilisateurs',
+            'route'  => 'users.index',
             'active' => 'users.*',
-            'icon' => 'users',
+            'icon'   => 'users',
         ]]);
     }
 
     $soonLinks = [
-        ['label' => 'Envois', 'icon' => 'send'],
-        ['label' => 'Statistiques', 'icon' => 'stats'],
+        ['label' => 'Envois',     'icon' => 'send'],
         ['label' => 'Parametres', 'route' => 'profile.edit', 'active' => 'profile.edit', 'icon' => 'settings'],
     ];
 @endphp

@@ -10,6 +10,7 @@ use App\Http\Controllers\SmtpSettingController;
 use App\Http\Controllers\CampaignAttachmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProspectController;
+use App\Http\Controllers\StatisticsController;
 
 Route::get('/', function () {
     return auth()->check()
@@ -65,6 +66,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('prospects/{contact}/status', [ProspectController::class, 'updateStatus'])->name('prospects.update-status');
     Route::post('prospects/{contact}/notes', [ProspectController::class, 'addNote'])->name('prospects.add-note');
     Route::post('prospects/{contact}/followup', [ProspectController::class, 'scheduleFollowUp'])->name('prospects.schedule-followup');
+
+    // Statistiques
+    Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
 
     Route::resource('campaigns', CampaignController::class)->except(['show']);
     Route::get('campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('campaigns.preview');
