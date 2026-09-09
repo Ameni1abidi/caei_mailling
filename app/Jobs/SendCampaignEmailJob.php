@@ -150,9 +150,9 @@ class SendCampaignEmailJob implements ShouldQueue
                         'encryption' => $smtp->encryption ?? null,
                         'timeout'    => 30,
                     ],
-                    'sender_email' => $smtp->sender_email ?? null,
-                    'sender_name'  => $smtp->sender_name ?? null,
-                    'reply_to'     => $smtp->reply_to_email ?? null,
+                    'sender_email' => $smtp->sender_email ? trim($smtp->sender_email) : config('mail.from.address', 'Contact@caei-afri.com'),
+                    'sender_name'  => $smtp->sender_name ? trim($smtp->sender_name) : config('mail.from.name', 'CAEI'),
+                    'reply_to'     => $smtp->reply_to_email ? trim($smtp->reply_to_email) : ($smtp->sender_email ?: config('mail.from.address', 'Contact@caei-afri.com')),
                 ];
             } else {
                 self::$cachedSmtpConfig = null;
