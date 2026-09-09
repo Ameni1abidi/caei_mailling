@@ -77,6 +77,8 @@ Route::middleware('auth')->group(function () {
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
     Route::post('campaigns/{campaign}/retry-failed', [CampaignController::class, 'retryFailed'])->name('campaigns.retry-failed');
     Route::post('campaigns/{campaign}/cancel', [CampaignController::class, 'cancel'])->name('campaigns.cancel');
+    Route::post('campaigns/{campaign}/schedule-send', [CampaignController::class, 'scheduleCampaign'])->name('campaigns.schedule-send');
+    Route::post('campaigns/{campaign}/unschedule', [CampaignController::class, 'unscheduleCampaign'])->name('campaigns.unschedule');
 
     // Pièces jointes / Fichiers
     Route::resource('attachments', CampaignAttachmentController::class);
