@@ -1,42 +1,32 @@
 @php
-    $isAdmin = Auth::user()?->hasRole('admin');
-
-    $mainLinks = [
-        ['label' => 'Tableau de bord', 'route' => 'dashboard', 'active' => 'dashboard', 'icon' => 'dashboard'],
-        ['label' => 'Contacts', 'route' => 'contacts.index', 'active' => 'contacts.*', 'icon' => 'contacts'],
-        ['label' => 'Listes', 'route' => 'categories.index', 'active' => 'categories.*', 'icon' => 'lists'],
-        ['label' => 'Campagnes', 'route' => 'campaigns.index', 'active' => 'campaigns.*', 'icon' => 'campaigns'],
-        ['label' => 'Pièces jointes', 'route' => 'attachments.index', 'active' => 'attachments.*', 'icon' => 'files'],
+    $links = [
+        ['label' => 'Tableau de bord',    'route' => 'dashboard',          'active' => 'dashboard',        'icon' => 'dashboard'],
+        ['label' => 'Contacts',           'route' => 'contacts.index',     'active' => 'contacts.*',       'icon' => 'contacts'],
+        ['label' => 'Listes',             'route' => 'categories.index',   'active' => 'categories.*',     'icon' => 'lists'],
+        ['label' => 'Campagnes',          'route' => 'campaigns.index',    'active' => 'campaigns.*',      'icon' => 'campaigns'],
+        ['label' => 'Suivi des prospects','route' => 'prospects.index',    'active' => 'prospects.*',      'icon' => 'prospects'],
+        ['label' => 'Statistiques',       'route' => 'statistics.index',   'active' => 'statistics.*',     'icon' => 'stats'],
+        ['label' => 'Pièces jointes',     'route' => 'attachments.index',  'active' => 'attachments.*',    'icon' => 'files'],
+        ['label' => 'Parametres SMTP',    'route' => 'smtp-settings.index','active' => 'smtp-settings.*', 'icon' => 'smtp'],
     ];
 
-    if ($isAdmin) {
-        // Insert Admin-only modules in main navigation
-        array_splice($mainLinks, 4, 0, [
-            [
-                'label' => 'Templates',
-                'route' => 'email-templates.index',
-                'active' => 'email-templates.*',
-                'icon' => 'templates',
-            ],
-            [
-                'label' => 'Suivi des prospects',
-                'route' => 'prospects.index',
-                'active' => 'prospects.*',
-                'icon' => 'prospects',
-            ],
-        ]);
-
-        $mainLinks[] = [
-            'label' => 'Paramètres SMTP',
-            'route' => 'smtp-settings.index',
-            'active' => 'smtp-settings.*',
-            'icon' => 'smtp',
-        ];
+    if (Auth::user()?->hasRole('admin')) {
+        array_splice($links, 4, 0, [[
+            'label'  => 'Templates',
+            'route'  => 'email-templates.index',
+            'active' => 'email-templates.*',
+            'icon'   => 'templates',
+        ], [
+            'label'  => 'Utilisateurs',
+            'route'  => 'users.index',
+            'active' => 'users.*',
+            'icon'   => 'users',
+        ]]);
     }
 
     $soonLinks = [
-        ['label' => 'Envois', 'icon' => 'send'],
-        ['label' => 'Statistiques', 'icon' => 'stats'],
+        ['label' => 'Envois',     'icon' => 'send'],
+        ['label' => 'Parametres', 'route' => 'profile.edit', 'active' => 'profile.edit', 'icon' => 'settings'],
     ];
 
     $settingLinks = [

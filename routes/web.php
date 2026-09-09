@@ -10,6 +10,7 @@ use App\Http\Controllers\SmtpSettingController;
 use App\Http\Controllers\CampaignAttachmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProspectController;
+use App\Http\Controllers\StatisticsController;
 
 Route::get('/', function () {
     return auth()->check()
@@ -62,6 +63,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('categories', CategoryController::class);
     Route::post('categories/{category}/add-contacts', [CategoryController::class, 'addContacts'])->name('categories.addContacts');
     Route::delete('categories/{category}/remove-contact/{contact}', [CategoryController::class, 'removeContact'])->name('categories.removeContact');
+
+    // Statistiques
+    Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
 
     Route::resource('campaigns', CampaignController::class)->except(['show']);
     Route::get('campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('campaigns.preview');
