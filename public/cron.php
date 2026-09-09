@@ -21,17 +21,21 @@ $app = require_once __DIR__ . '/../bootstrap/app.php';
 
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 
-// 1. Vider la file d'attente des emails
+// 1. Déclencher les campagnes programmées
+$kernel->call('campaigns:dispatch-scheduled');
+
+// 2. Exécuter le scheduler Laravel
+$kernel->call('schedule:run');
+
+// 3. Traiter la file d'attente des emails
 $kernel->call('queue:work', [
     'connection' => 'database',
     '--queue' => 'emails,default',
     '--stop-when-empty' => true,
+    '--max-jobs' => 50,
     '--tries' => 3,
-    '--timeout' => 60,
+    '--timeout' => 55,
 ]);
-
-// 2. Exécuter le scheduler Laravel
-$kernel->call('schedule:run');
 
 header('Content-Type: application/json');
 echo json_encode([

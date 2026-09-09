@@ -295,7 +295,7 @@ class CampaignController extends Controller
     {
         // Protection anti-doublon : verrouiller la ligne et vérifier le statut
         $campaign = Campaign::lockForUpdate()->find($campaign->id);
-        if (! $campaign || $campaign->statut !== 'brouillon') {
+        if (! $campaign || ! in_array($campaign->statut, ['brouillon', 'programmee'])) {
             return back()->with('error', 'Cette campagne a déjà été envoyée ou est en cours.');
         }
 

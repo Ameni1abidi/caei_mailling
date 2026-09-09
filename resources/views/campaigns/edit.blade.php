@@ -603,36 +603,61 @@
                     @elseif($campaign->statut === 'programmee')
                         {{-- Campagne déjà programmée --}}
                         <div class="bg-purple-50 border border-purple-200 text-purple-950 p-4 rounded-xl space-y-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-purple-800 uppercase tracking-wider">
-                                <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span>Envoi programmé</span>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 text-xs font-bold text-purple-800 uppercase tracking-wider">
+                                    <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>Envoi programmé</span>
+                                </div>
+                                @if($campaign->date_envoi && $campaign->date_envoi <= now())
+                                    <span class="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 rounded-full animate-pulse">
+                                        Prête à partir
+                                    </span>
+                                @endif
                             </div>
                             <div class="text-sm font-bold text-purple-900">
                                 📅 {{ $campaign->date_envoi?->format('d/m/Y à H:i') ?? 'Date non définie' }}
                             </div>
                             <p class="text-xs text-purple-700 leading-relaxed">
-                                La campagne sera automatiquement envoyée à cette date. Le cron vérifie chaque minute.
+                                @if($campaign->date_envoi && $campaign->date_envoi <= now())
+                                    L'heure programmée est atteinte. La campagne partira automatiquement au prochain passage du cron, ou vous pouvez la lancer immédiatement ci-dessous.
+                                @else
+                                    La campagne sera automatiquement envoyée à cette date. Le cron vérifie chaque minute.
+                                @endif
                             </p>
+
+                            {{-- Bouton pour forcer l'envoi immédiat maintenant --}}
+                            <form action="{{ route('campaigns.send', $campaign) }}" method="POST"
+                                  onsubmit="return confirm('Lancer l\'envoi immédiat de cette campagne maintenant aux {{ $nbDestinataires }} contact(s) ?')">
+                                @csrf
+                                <button type="submit" class="inline-flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-2.5 px-4 rounded-xl shadow-md shadow-emerald-100 transition duration-150">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                    </svg>
+                                    <span>🚀 Lancer l'envoi maintenant</span>
+                                </button>
+                            </form>
+
                             {{-- Modifier la date --}}
-                            <form action="{{ route('campaigns.schedule-send', $campaign) }}" method="POST" class="space-y-2 border-t border-purple-200 pt-3">
+                            <form action="{{ route('campaigns.schedule-send', $campaign) }}" method="POST" class="space-y-2 border-t border-purple-200/80 pt-3">
                                 @csrf
                                 <label class="block text-xs font-bold text-purple-800">Modifier la date d'envoi :</label>
                                 <input type="datetime-local" name="date_envoi"
                                        value="{{ $campaign->date_envoi?->format('Y-m-d\TH:i') }}"
-                                       min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}"
+                                       min="{{ now()->addMinutes(1)->format('Y-m-d\TH:i') }}"
                                        class="w-full text-sm py-2 px-3 rounded-lg border border-purple-200 bg-white focus:ring-2 focus:ring-purple-400 focus:outline-none" required>
                                 <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition">
                                     Modifier la programmation
                                 </button>
                             </form>
+
                             {{-- Annuler la programmation --}}
                             <form action="{{ route('campaigns.unschedule', $campaign) }}" method="POST"
                                   onsubmit="return confirm('Annuler la programmation ? La campagne repassera en brouillon.')">
                                 @csrf
                                 <button type="submit" class="w-full border border-purple-300 text-purple-700 hover:bg-purple-100 text-xs font-semibold py-2 px-4 rounded-lg transition">
-                                    Annuler la programmation
+                                    Annuler la programmation (retour brouillon)
                                 </button>
                             </form>
                         </div>

@@ -30,15 +30,21 @@ Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
 
     @set_time_limit(120);
 
+    // 1. Déclencher les campagnes programmées
+    \Illuminate\Support\Facades\Artisan::call('campaigns:dispatch-scheduled');
+
+    // 2. Exécuter le scheduler Laravel (relances auto)
+    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+
+    // 3. Traiter immédiatement la file d'attente
     \Illuminate\Support\Facades\Artisan::call('queue:work', [
         'connection' => 'database',
         '--queue' => 'emails,default',
         '--stop-when-empty' => true,
+        '--max-jobs' => 50,
         '--tries' => 3,
-        '--timeout' => 60,
+        '--timeout' => 55,
     ]);
-
-    \Illuminate\Support\Facades\Artisan::call('schedule:run');
 
     return response()->json([
         'status' => 'success',
