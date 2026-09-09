@@ -54,23 +54,16 @@ class CampaignMail extends Mailable
                 'unsubscribeUrl' => $unsubscribeUrl,
             ]);
 
-        // En-têtes conformes RFC 8058 & exigences Gmail / Yahoo / Microsoft 2024
+        // En-têtes optimisés pour délivrabilité en boîte Principale (sans étiquette bulk Promotions)
         $mail->withSymfonyMessage(function ($message) use ($unsubscribeUrl) {
             $headers = $message->getHeaders();
 
-            // 1. Désinscription en 1 clic (obligatoire Gmail/Yahoo pour éviter le marquage spam)
+            // 1. Désinscription sécurisée en 1 clic (respect des critères anti-spam sans forcer l'onglet Promotions)
             $headers->addTextHeader('List-Unsubscribe', "<mailto:Contact@caei-afri.com?subject=Unsubscribe>, <{$unsubscribeUrl}>");
             $headers->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
 
-            // 2. Indication de mail de masse légitime (évite que le filtre considère le mail comme du phishing)
-            $headers->addTextHeader('Precedence', 'bulk');
-            $headers->addTextHeader('Auto-Submitted', 'auto-generated');
-
-            // 3. Empêche les réponses automatiques / Out of Office en cascade (protection de la réputation)
+            // 2. Empêche les réponses automatiques / Out of Office en cascade
             $headers->addTextHeader('X-Auto-Response-Suppress', 'OOF, AutoReply');
-
-            // 4. Identifiant de boucle de rétroaction (Feedback-ID pour Google Postmaster)
-            $headers->addTextHeader('Feedback-ID', "campaign-{$this->campaign->id}:caei-mailing:bulk");
         });
 
         // Pièces jointes éventuelles
