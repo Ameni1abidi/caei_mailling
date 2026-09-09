@@ -33,6 +33,97 @@ class UserController extends Controller
         return view('users.index', compact('users', 'roles'));
     }
 
+    /**
+     * Dashboard monitoring for all users activity.
+     */
+    public function monitoring(Request $request)
+    {
+        $query = User::query()->with(['roles', 'campaigns', 'importLogs']);
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->role($request->string('role')->toString());
+        }
+
+        $users = $query->latest()->get();
+        $roles = Role::orderBy('name')->pluck('name');
+
+        $totalEmailsSent = 0;
+        $totalEmailsOpened = 0;
+        $totalEmailsClicked = 0;
+        $totalCampaigns = 0;
+
+        $userStatsList = $users->map(function ($user) use (&$totalEmailsSent, &$totalEmailsOpened, &$totalEmailsClicked, &$totalCampaigns) {
+            $st = $user->stats;
+            $totalEmailsSent += $st['emails_sent'];
+            $totalEmailsOpened += $st['emails_opened'];
+            $totalEmailsClicked += $st['emails_clicked'];
+            $totalCampaigns += $st['total_campaigns'];
+
+            return [
+                'user' => $user,
+                'stats' => $st,
+            ];
+        });
+
+        $globalOpenRate = $totalEmailsSent > 0 ? round(($totalEmailsOpened / $totalEmailsSent) * 100, 1) : 0;
+        $globalClickRate = $totalEmailsSent > 0 ? round(($totalEmailsClicked / $totalEmailsSent) * 100, 1) : 0;
+
+        $globalStats = [
+            'total_users' => $users->count(),
+            'total_campaigns' => $totalCampaigns,
+            'total_emails_sent' => $totalEmailsSent,
+            'total_emails_opened' => $totalEmailsOpened,
+            'total_emails_clicked' => $totalEmailsClicked,
+            'global_open_rate' => $globalOpenRate,
+            'global_click_rate' => $globalClickRate,
+        ];
+
+        return view('users.monitoring', compact('userStatsList', 'roles', 'globalStats'));
+    }
+
+    /**
+     * Detailed monitoring & activity log for an individual user.
+     */
+    public function show(User $user)
+    {
+        $user->load(['roles', 'importLogs']);
+        $stats = $user->stats;
+
+        $campaigns = $user->campaigns()
+            ->with(['category', 'importLog'])
+            ->withCount([
+                'emailLogs as envoyes_count' => function ($q) {
+                    $q->whereIn('status', [\App\Models\EmailLog::STATUS_SENT, \App\Models\EmailLog::STATUS_DELIVERED]);
+                },
+                'emailLogs as delivered_count' => function ($q) {
+                    $q->where('status', \App\Models\EmailLog::STATUS_DELIVERED);
+                },
+                'emailLogs as ouverts_count' => function ($q) {
+                    $q->where('opened', true);
+                },
+                'emailLogs as clics_count' => function ($q) {
+                    $q->where('clicked', true);
+                },
+                'emailLogs as erreurs_count' => function ($q) {
+                    $q->whereIn('status', [\App\Models\EmailLog::STATUS_FAILED, \App\Models\EmailLog::STATUS_BOUNCED, \App\Models\EmailLog::STATUS_INVALID]);
+                }
+            ])
+            ->latest()
+            ->paginate(10);
+
+        $imports = $user->importLogs()->latest()->take(10)->get();
+
+        return view('users.show', compact('user', 'stats', 'campaigns', 'imports'));
+    }
+
     public function create()
     {
         $roles = Role::orderBy('name')->pluck('name');
@@ -62,9 +153,17 @@ class UserController extends Controller
         $validated['password'] = Hash::make($validated['password']);
 
         $user = User::create($validated);
-        $user->syncRoles($roles);
+        if (!empty($roles)) {
+            $user->syncRoles($roles);
+        }
 
-        return redirect()->route('users.index')->with('success', 'Utilisateur cree avec succes.');
+        $successMsg = "Utilisateur {$user->name} ({$user->email}) créé avec succès.";
+
+        if ($request->input('source') === 'settings' || $request->input('redirect_to') === 'profile') {
+            return redirect()->route('profile.edit')->with('success', $successMsg);
+        }
+
+        return redirect()->route('users.index')->with('success', $successMsg);
     }
 
     public function edit(User $user)
@@ -85,8 +184,8 @@ class UserController extends Controller
         ], [
             'name.required' => 'Le nom est obligatoire.',
             'email.required' => 'L\'email est obligatoire.',
-            'email.unique' => 'Cet email est deja utilise.',
-            'password.min' => 'Le mot de passe doit contenir au moins 8 caracteres.',
+            'email.unique' => 'Cet email est déjà utilisé.',
+            'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
             'password.confirmed' => 'La confirmation du mot de passe ne correspond pas.',
         ]);
 
@@ -102,7 +201,13 @@ class UserController extends Controller
         $user->update($validated);
         $user->syncRoles($roles);
 
-        return redirect()->route('users.index')->with('success', 'Utilisateur mis a jour.');
+        $successMsg = "Utilisateur {$user->name} mis à jour avec succès.";
+
+        if ($request->input('source') === 'settings' || $request->input('redirect_to') === 'profile') {
+            return redirect()->route('profile.edit')->with('success', $successMsg);
+        }
+
+        return redirect()->route('users.index')->with('success', $successMsg);
     }
 
     public function destroy(Request $request, User $user)
@@ -111,8 +216,15 @@ class UserController extends Controller
             return back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
         }
 
+        $name = $user->name;
         $user->delete();
 
-        return redirect()->route('users.index')->with('success', 'Utilisateur supprime.');
+        $successMsg = "Utilisateur {$name} supprimé avec succès.";
+
+        if ($request->input('source') === 'settings' || $request->input('redirect_to') === 'profile') {
+            return redirect()->route('profile.edit')->with('success', $successMsg);
+        }
+
+        return redirect()->route('users.index')->with('success', $successMsg);
     }
 }
