@@ -92,30 +92,38 @@ class ImportFileReader
     }
 
     /**
-     * Analyse un fichier Excel via maatwebsite/excel.
+     * Analyse un fichier Excel (.xlsx, .xls) via PhpSpreadsheet.
      */
     private static function analyzeExcel(string $fullPath, string $storagePath, int $previewRows): array
     {
-        // Lire uniquement les N+1 premières lignes (entête + aperçu)
-        $reader = new class($previewRows + 1) implements ToArray, WithLimit {
-            private int $limit;
-            public array $result = [];
+        if (!file_exists($fullPath)) {
+            $fullPath = Storage::disk('public')->path($storagePath);
+        }
 
-            public function __construct(int $limit) { $this->limit = $limit; }
-            public function array(array $array): void { $this->result = $array; }
-            public function limit(): int { return $this->limit; }
-        };
+        if (!file_exists($fullPath)) {
+            return ['headers' => [], 'preview' => [], 'total_estimate' => 0];
+        }
 
-        Excel::import($reader, Storage::disk('public')->path($storagePath), 'public');
-        $rows = $reader->result;
+        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($fullPath);
+        $reader->setReadDataOnly(true);
+        $spreadsheet = $reader->load($fullPath);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $highestRow = (int) $sheet->getHighestRow();
+        $highestColumn = $sheet->getHighestColumn();
+
+        if ($highestRow < 1) {
+            return ['headers' => [], 'preview' => [], 'total_estimate' => 0];
+        }
+
+        $limitRow = min($previewRows + 1, $highestRow);
+        $rows = $sheet->rangeToArray("A1:{$highestColumn}{$limitRow}", null, true, true, false);
 
         if (empty($rows)) {
             return ['headers' => [], 'preview' => [], 'total_estimate' => 0];
         }
 
-        $headers = array_map('trim', array_map('strval', $rows[0]));
-        // Filtrer les entêtes vides
-        $headers = array_filter($headers, fn($h) => $h !== '');
+        $headers = array_filter(array_map('trim', array_map('strval', $rows[0] ?? [])), fn($h) => $h !== '');
         $headers = array_values($headers);
 
         $dataRows = array_slice($rows, 1);
@@ -129,32 +137,11 @@ class ImportFileReader
             $preview[] = $assoc;
         }
 
-        // Compter les lignes totales (lecture rapide)
-        $totalEstimate = self::countExcelRows($storagePath);
-
         return [
             'headers'        => $headers,
             'preview'        => $preview,
-            'total_estimate' => max(0, $totalEstimate - 1), // Exclure la ligne d'entête
+            'total_estimate' => max(0, $highestRow - 1),
         ];
-    }
-
-    /**
-     * Compte le nombre total de lignes dans un Excel (sans charger tout en mémoire).
-     */
-    private static function countExcelRows(string $storagePath): int
-    {
-        $counter = new class implements ToArray {
-            public int $count = 0;
-            public function array(array $array): void { $this->count = count($array); }
-        };
-
-        try {
-            Excel::import($counter, Storage::disk('public')->path($storagePath), 'public');
-            return $counter->count;
-        } catch (\Throwable) {
-            return 0;
-        }
     }
 
     /**

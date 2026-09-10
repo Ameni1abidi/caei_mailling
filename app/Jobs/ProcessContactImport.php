@@ -210,7 +210,7 @@ class ProcessContactImport implements ShouldQueue
                 }
             };
 
-            Excel::import($processor, $fullPath, 'public');
+            Excel::import($processor, $storagePath, 'public');
             $imported   = $processor->imported;
             $duplicates = $processor->duplicates;
             $errors     = $processor->errors;
