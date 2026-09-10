@@ -7,7 +7,9 @@
         site_web: @js($settings['site_web']),
         matricule_fiscal: @js($settings['matricule_fiscal']),
         show_header: @js($settings['show_header']),
-        logo_url: @js($settings['logo_url'])
+        show_footer_logo: @js($settings['show_footer_logo']),
+        logo_url: @js($settings['logo_url']),
+        footer_logo_url: @js($settings['footer_logo_url'])
     })">
         <!-- Header -->
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
@@ -164,16 +166,16 @@
                         </div>
                     </div>
 
-                    <!-- Logo Upload -->
+                    <!-- Logo Upload En-tête -->
                     <div class="pt-4 border-t border-slate-100">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                            Logo Officiel de l'en-tête
+                            1. Logo d'En-tête (Haut du mail)
                         </label>
                         
                         <div class="flex items-center gap-5 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
                             <!-- Aperçu Logo Actuel -->
                             <div class="w-20 h-20 bg-white rounded-xl border border-slate-200 p-2 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
-                                <img :src="logo_preview || logo_url" alt="Logo" class="max-w-full max-h-full object-contain">
+                                <img :src="logo_preview || logo_url" alt="Logo En-tête" class="max-w-full max-h-full object-contain">
                             </div>
 
                             <div class="flex-1 space-y-1.5">
@@ -181,7 +183,7 @@
                                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                     </svg>
-                                    <span>Changer de logo...</span>
+                                    <span>Changer le logo d'en-tête...</span>
                                 </label>
                                 <input type="file"
                                        id="logo-input"
@@ -189,7 +191,43 @@
                                        accept="image/png,image/jpeg,image/svg+xml,image/webp"
                                        class="hidden"
                                        @change="handleLogoChange($event)">
-                                <p class="text-[11px] text-slate-400">PNG transparent ou JPEG. Recommandé : carré ou circulaire. Max 5 Mo.</p>
+                                <p class="text-[11px] text-slate-400">Emblème officiel rond ou carré. PNG transparent ou JPEG. Max 5 Mo.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logo Upload Pied de page (Footer) -->
+                    <div class="pt-4 border-t border-slate-100 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                2. Logo du Pied de page (Footer)
+                            </label>
+                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+                                <input type="checkbox" name="show_footer_logo" value="1" x-model="show_footer_logo" class="rounded text-amber-500 focus:ring-amber-400">
+                                <span>Activer dans le footer</span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center gap-5 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                            <!-- Aperçu Logo Footer Actuel -->
+                            <div class="w-24 h-16 bg-white rounded-xl border border-slate-200 p-2 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                                <img :src="footer_logo_preview || footer_logo_url" alt="Logo Footer" class="max-w-full max-h-full object-contain">
+                            </div>
+
+                            <div class="flex-1 space-y-1.5">
+                                <label for="footer-logo-input" class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold cursor-pointer transition shadow-sm">
+                                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    </svg>
+                                    <span>Changer le logo de footer...</span>
+                                </label>
+                                <input type="file"
+                                       id="footer-logo-input"
+                                       name="footer_logo"
+                                       accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                                       class="hidden"
+                                       @change="handleFooterLogoChange($event)">
+                                <p class="text-[11px] text-slate-400">Bannière CAEI horizontale (avec texte du comité). PNG ou JPEG. Max 5 Mo.</p>
                             </div>
                         </div>
                     </div>
@@ -278,9 +316,18 @@
                             </p>
                         </div>
 
-                        <!-- Pied de page officiel -->
-                        <div class="p-4 bg-slate-50 border-t border-slate-100 text-center text-[10px] text-slate-400">
-                            <span x-text="site_web || 'www.caei-afri.com'"></span> &bull; <span x-text="email || 'Training@caei-afri.com'"></span>
+                        <!-- Pied de page officiel avec Logo CAEI -->
+                        <div class="p-5 bg-slate-50 border-t border-slate-100 text-center text-[10px] text-slate-500 space-y-2">
+                            <div x-show="show_footer_logo" class="pb-1">
+                                <img :src="footer_logo_preview || footer_logo_url"
+                                     alt="Logo Footer CAEI"
+                                     class="max-w-[210px] w-auto h-auto mx-auto object-contain" />
+                            </div>
+                            <div class="font-bold text-slate-800 text-xs" x-text="company_name || 'CAEI COMPANY GROUP'"></div>
+                            <div class="text-[10px] text-slate-500">Cabinet International d'Audit, d'Expertise et d'Ingénierie de Formation</div>
+                            <div class="text-[10px] text-slate-400">
+                                <span x-text="site_web || 'www.caei-afri.com'"></span> &bull; <span x-text="email || 'Training@caei-afri.com'"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -309,8 +356,11 @@
             site_web: initialData.site_web,
             matricule_fiscal: initialData.matricule_fiscal,
             show_header: initialData.show_header,
+            show_footer_logo: initialData.show_footer_logo,
             logo_url: initialData.logo_url,
             logo_preview: null,
+            footer_logo_url: initialData.footer_logo_url,
+            footer_logo_preview: null,
 
             handleLogoChange(event) {
                 const file = event.target.files[0];
@@ -318,6 +368,17 @@
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         this.logo_preview = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            },
+
+            handleFooterLogoChange(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.footer_logo_preview = e.target.result;
                     };
                     reader.readAsDataURL(file);
                 }

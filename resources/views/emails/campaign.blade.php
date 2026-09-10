@@ -77,23 +77,42 @@
                         </td>
                     </tr>
 
-                    <!-- Pied de page officiel prestigieux -->
+                    <!-- Pied de page officiel prestigieux avec Logo CAEI -->
                     <tr>
                         <td style="background-color: #f8fafc; padding: 26px 28px; border-top: 1px solid #e2e8f0; text-align: center; color: #64748b; font-size: 11px; line-height: 1.6;">
+                            @if(!empty($headerSettings['footer_logo_url']) && ($headerSettings['show_footer_logo'] ?? true))
+                                <div style="margin: 0 auto 16px auto; text-align: center;">
+                                    @if(!empty($headerSettings['site_web']))
+                                        <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" style="text-decoration: none; display: inline-block;">
+                                    @endif
+                                    <img src="{{ $headerSettings['footer_logo_url'] }}" 
+                                         alt="{{ $headerSettings['company_name'] ?? 'CAEI' }}" 
+                                         width="260" 
+                                         style="display: block; width: 260px; max-width: 85%; height: auto; border: 0; margin: 0 auto;" />
+                                    @if(!empty($headerSettings['site_web']))
+                                        </a>
+                                    @endif
+                                </div>
+                            @endif
+
                             <p style="margin: 0 0 6px 0; font-weight: 700; color: #334155; font-size: 12px;">
-                                CAEI COMPANY GROUP
+                                {{ $headerSettings['company_name'] ?? 'CAEI COMPANY GROUP' }}
                             </p>
                             <p style="margin: 0 0 8px 0; color: #64748b;">
                                 Cabinet International d'Audit, d'Expertise et d'Ingénierie de Formation
                             </p>
                             <p style="margin: 0 0 12px 0;">
-                                <a href="https://www.caei-afri.com" target="_blank" style="color: #b45309; text-decoration: none; font-weight: 600;">
-                                    www.caei-afri.com
-                                </a>
-                                &nbsp;&bull;&nbsp;
-                                <a href="mailto:Contact@caei-afri.com" style="color: #64748b; text-decoration: none;">
-                                    Contact@caei-afri.com
-                                </a>
+                                @if(!empty($headerSettings['site_web']))
+                                    <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" style="color: #b45309; text-decoration: none; font-weight: 600;">
+                                        {{ $headerSettings['site_web'] }}
+                                    </a>
+                                    &nbsp;&bull;&nbsp;
+                                @endif
+                                @if(!empty($headerSettings['email']))
+                                    <a href="mailto:{{ $headerSettings['email'] }}" style="color: #64748b; text-decoration: none;">
+                                        {{ $headerSettings['email'] }}
+                                    </a>
+                                @endif
                             </p>
                             <p style="margin: 0 0 12px 0; color: #94a3b8; font-size: 10px;">
                                 Vous recevez cette communication professionnelle car vous êtes inscrit dans le réseau de contacts CAEI.
