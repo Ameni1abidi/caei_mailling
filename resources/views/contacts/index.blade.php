@@ -22,20 +22,12 @@
                     Historique des imports
                 </a>
 
-                <form action="{{ route('contacts.import') }}" method="POST" enctype="multipart/form-data" class="inline-flex" x-data="{ loading: false }">
-                    @csrf
-                    <input type="file" name="file" id="file-upload" accept=".csv,.xlsx,.txt" class="hidden" x-on:change="loading = true; $el.closest('form').submit()">
-                    <label for="file-upload" class="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 border border-slate-200/80 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm">
-                        <svg x-show="!loading" class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                        </svg>
-                        <svg x-show="loading" class="w-4 h-4 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24" style="display: none;">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span x-text="loading ? 'Importation...' : 'Importer CSV/Excel'">Importer CSV/Excel</span>
-                    </label>
-                </form>
+                <a href="{{ route('contacts.import.upload') }}" class="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-200/80 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    <span>Importer CSV/Excel</span>
+                </a>
 
                 <a href="{{ route('contacts.create') }}" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition duration-150 transform hover:-translate-y-0.5">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,7 +38,7 @@
             </div>
         </div>
 
-        <!-- Flash messages -->
+        {{-- Flash messages --}}
         @if(session('success'))
             <div x-data="{ show: true }" x-show="show" x-transition class="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 text-emerald-900 p-4 rounded-xl text-sm font-medium shadow-sm">
                 <div class="flex items-center gap-3">
@@ -61,6 +53,38 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
+                </button>
+            </div>
+        @endif
+
+        @if(session('warning'))
+            <div x-data="{ show: true }" x-show="show" x-transition class="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-xl text-sm font-medium shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="p-1 bg-amber-100 rounded-lg text-amber-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        </svg>
+                    </div>
+                    <span>{{ session('warning') }}</span>
+                </div>
+                <button @click="show = false" class="text-amber-500 hover:text-amber-700 p-1 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div x-data="{ show: true }" x-show="show" x-transition class="flex items-center justify-between gap-3 bg-rose-50 border border-rose-200 text-rose-900 p-4 rounded-xl text-sm font-medium shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="p-1 bg-rose-100 rounded-lg text-rose-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </div>
+                    <span>{{ session('error') }}</span>
+                </div>
+                <button @click="show = false" class="text-rose-500 hover:text-rose-700 p-1 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
         @endif

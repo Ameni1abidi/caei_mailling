@@ -61,6 +61,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // ─────────────────────────────────────────────
+    // IMPORT WIZARD — nouveau système 5 étapes
+    // ─────────────────────────────────────────────
+    Route::get('contacts/import/upload', [App\Http\Controllers\ContactImportController::class, 'showUpload'])->name('contacts.import.upload');
+    Route::post('contacts/import/upload', [App\Http\Controllers\ContactImportController::class, 'handleUpload'])->name('contacts.import.handle-upload');
+    Route::get('contacts/import/{importLogId}/mapping', [App\Http\Controllers\ContactImportController::class, 'showMapping'])->name('contacts.import.mapping');
+    Route::post('contacts/import/{importLogId}/mapping', [App\Http\Controllers\ContactImportController::class, 'saveMapping'])->name('contacts.import.save-mapping');
+    Route::get('contacts/import/{importLogId}/preview', [App\Http\Controllers\ContactImportController::class, 'showPreview'])->name('contacts.import.preview');
+    Route::post('contacts/import/{importLogId}/execute', [App\Http\Controllers\ContactImportController::class, 'executeImport'])->name('contacts.import.execute');
+    Route::get('contacts/import/{importLogId}/progress', [App\Http\Controllers\ContactImportController::class, 'showProgress'])->name('contacts.import.progress');
+    Route::get('contacts/import/{importLogId}/status', [App\Http\Controllers\ContactImportController::class, 'importStatus'])->name('contacts.import.status');
+    Route::get('contacts/import/{importLogId}/result', [App\Http\Controllers\ContactImportController::class, 'showResult'])->name('contacts.import.result');
+    Route::get('contacts/import/template', [App\Http\Controllers\ContactImportController::class, 'downloadTemplate'])->name('contacts.import.template');
+    Route::get('contacts/import/{importLogId}/errors', [App\Http\Controllers\ContactImportController::class, 'downloadErrors'])->name('contacts.import.errors');
+
     // Routes spécifiques contacts (avant resource pour éviter conflit avec {contact})
     Route::post('contacts/import', [ContactController::class, 'import'])->name('contacts.import');
     Route::get('contacts/import-history', [ContactController::class, 'importHistory'])->name('contacts.import-history');
