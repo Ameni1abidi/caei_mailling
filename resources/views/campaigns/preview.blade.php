@@ -73,6 +73,38 @@
                         </div>
                     </div>
 
+                    <!-- En-tête officiel dans le simulateur -->
+                    @php
+                        $headerSettings = \App\Services\EmailHeaderSettings::get();
+                    @endphp
+                    @if($headerSettings['show_header'] ?? true)
+                        <div class="px-6 py-4 bg-white border-b border-slate-100">
+                            <div class="flex items-center justify-between gap-4">
+                                <div class="text-[11px] leading-relaxed text-slate-700 italic space-y-0.5">
+                                    <div class="font-bold not-italic text-sm text-slate-900 mb-1">{{ $headerSettings['company_name'] }}</div>
+                                    @if(!empty($headerSettings['siege_social']))
+                                        <div><strong>Siège social :</strong> {{ $headerSettings['siege_social'] }}</div>
+                                    @endif
+                                    @if(!empty($headerSettings['telephone']))
+                                        <div><strong>Téléphone :</strong> {{ $headerSettings['telephone'] }}</div>
+                                    @endif
+                                    @if(!empty($headerSettings['email']))
+                                        <div><strong>E-mail :</strong> {{ $headerSettings['email'] }}</div>
+                                    @endif
+                                    @if(!empty($headerSettings['site_web']))
+                                        <div><strong>Site :</strong> {{ $headerSettings['site_web'] }}</div>
+                                    @endif
+                                    @if(!empty($headerSettings['matricule_fiscal']))
+                                        <div><span class="underline"><strong>MF:</strong></span> {{ $headerSettings['matricule_fiscal'] }}</div>
+                                    @endif
+                                </div>
+                                <div class="shrink-0">
+                                    <img src="{{ $headerSettings['logo_url'] }}" alt="Logo" class="w-24 h-auto object-contain">
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <!-- Email Body Render -->
                     <div class="p-6 md:p-8 bg-white min-h-[300px] text-sm text-slate-800 leading-relaxed overflow-y-auto">
                         {!! $contenuPersonnalise !!}

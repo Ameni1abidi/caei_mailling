@@ -45,6 +45,13 @@
 
     if ($isAdmin) {
         $settingLinks[] = [
+            'label' => 'En-tête & Logo Email',
+            'route' => 'settings.email-header',
+            'active' => 'settings.email-header*',
+            'icon' => 'email-header',
+        ];
+
+        $settingLinks[] = [
             'label' => 'Utilisateurs',
             'route' => 'users.index',
             'active' => 'users.index',

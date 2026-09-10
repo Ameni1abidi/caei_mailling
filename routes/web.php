@@ -115,6 +115,11 @@ Route::middleware('auth')->group(function () {
         Route::post('smtp-settings/{smtp_setting}/test', [SmtpSettingController::class, 'testConnection'])->name('smtp-settings.test');
         Route::post('smtp-settings/{smtp_setting}/activate', [SmtpSettingController::class, 'activate'])->name('smtp-settings.activate');
 
+        // Personnalisation En-tête & Logo Email (Admin)
+        Route::get('settings/email-header', [App\Http\Controllers\EmailHeaderSettingController::class, 'edit'])->name('settings.email-header');
+        Route::post('settings/email-header', [App\Http\Controllers\EmailHeaderSettingController::class, 'update'])->name('settings.email-header.update');
+        Route::post('settings/email-header/reset', [App\Http\Controllers\EmailHeaderSettingController::class, 'reset'])->name('settings.email-header.reset');
+
         Route::get('users/monitoring', [UserController::class, 'monitoring'])->name('users.monitoring');
         Route::resource('users', UserController::class);
 
