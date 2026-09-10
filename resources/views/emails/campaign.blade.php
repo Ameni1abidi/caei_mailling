@@ -17,25 +17,58 @@
             <td align="center" style="padding: 28px 12px;">
                 <!-- Main Card Container -->
                 <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 620px; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);">
-                    <!-- Header avec Logo Officiel CAEI -->
+                    <!-- Header Officiel CAEI : Coordonnées à gauche + Logo à droite -->
+                    @php
+                        $headerSettings = \App\Services\EmailHeaderSettings::get();
+                    @endphp
+                    @if($headerSettings['show_header'] ?? true)
                     <tr>
-                        <td align="center" style="padding: 32px 24px 22px 24px; background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);">
-                            <a href="https://www.caei-afri.com" target="_blank" style="text-decoration: none; display: inline-block;">
-                                <img src="{{ asset('images/logo-caei.jpg') }}" 
-                                     alt="CAEI COMPANY GROUP" 
-                                     width="115" 
-                                     style="display: block; width: 115px; max-width: 115px; height: auto; border: 0; margin: 0 auto; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />
-                            </a>
-                            <div style="margin-top: 12px; font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #0f172a;">
-                                CAEI COMPANY GROUP
-                            </div>
-                            <div style="font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #b45309; margin-top: 2px;">
-                                Codicil &bull; Audit &bull; Formation &bull; Conseil
-                            </div>
-                            <!-- Gold accent bar -->
-                            <div style="height: 2px; width: 60px; background: linear-gradient(90deg, #b45309, #f59e0b); margin: 16px auto 0 auto; border-radius: 2px;"></div>
+                        <td style="padding: 24px 28px 20px 28px; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <!-- Coordonnées à gauche -->
+                                    <td valign="middle" style="text-align: left; vertical-align: middle; padding-right: 12px; font-family: Arial, Helvetica, sans-serif;">
+                                        @if(!empty($headerSettings['company_name']))
+                                            <div style="font-size: 14px; font-weight: bold; font-style: italic; color: #0f172a; margin-bottom: 5px; letter-spacing: 0.3px;">
+                                                {{ $headerSettings['company_name'] }}
+                                            </div>
+                                        @endif
+                                        <div style="font-size: 11px; line-height: 1.55; color: #1e293b; font-style: italic;">
+                                            @if(!empty($headerSettings['siege_social']))
+                                                <div><strong>Siège social :</strong> {{ $headerSettings['siege_social'] }}</div>
+                                            @endif
+                                            @if(!empty($headerSettings['telephone']))
+                                                <div><strong>Téléphone :</strong> {{ $headerSettings['telephone'] }}</div>
+                                            @endif
+                                            @if(!empty($headerSettings['email']))
+                                                <div><strong>E-mail :</strong> <a href="mailto:{{ $headerSettings['email'] }}" style="color: #0f172a; text-decoration: none;">{{ $headerSettings['email'] }}</a></div>
+                                            @endif
+                                            @if(!empty($headerSettings['site_web']))
+                                                <div><strong>Site :</strong> <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" style="color: #0f172a; text-decoration: none;">{{ $headerSettings['site_web'] }}</a></div>
+                                            @endif
+                                            @if(!empty($headerSettings['matricule_fiscal']))
+                                                <div><span style="text-decoration: underline;"><strong>MF:</strong></span> {{ $headerSettings['matricule_fiscal'] }}</div>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <!-- Logo officiel à droite -->
+                                    <td valign="middle" align="right" style="width: 125px; min-width: 110px; text-align: right; vertical-align: middle;">
+                                        @if(!empty($headerSettings['site_web']))
+                                            <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" style="text-decoration: none; display: inline-block;">
+                                        @endif
+                                        <img src="{{ $headerSettings['logo_url'] }}" 
+                                             alt="{{ $headerSettings['company_name'] ?? 'CAEI' }}" 
+                                             width="115" 
+                                             style="display: block; width: 115px; max-width: 115px; height: auto; border: 0; margin-left: auto;" />
+                                        @if(!empty($headerSettings['site_web']))
+                                            </a>
+                                        @endif
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                     </tr>
+                    @endif
 
                     <!-- Contenu du message -->
                     <tr>
