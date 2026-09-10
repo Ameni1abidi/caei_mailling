@@ -32,12 +32,17 @@ class EmailHeaderSettingController extends Controller
             'site_web'         => ['nullable', 'string', 'max:255'],
             'matricule_fiscal' => ['nullable', 'string', 'max:100'],
             'logo'             => ['nullable', 'image', 'mimes:png,jpg,jpeg,svg,webp,gif', 'max:5120'],
+            'footer_logo'      => ['nullable', 'image', 'mimes:png,jpg,jpeg,svg,webp,gif', 'max:5120'],
             'show_header'      => ['nullable', 'boolean'],
+            'show_footer_logo' => ['nullable', 'boolean'],
         ], [
-            'email.email' => "L'adresse e-mail saisie n'est pas valide.",
-            'logo.image'  => 'Le fichier téléversé doit être une image.',
-            'logo.mimes'  => 'Formats acceptés pour le logo : PNG, JPG, JPEG, SVG, WEBP.',
-            'logo.max'    => 'Le logo ne doit pas dépasser 5 Mo.',
+            'email.email'       => "L'adresse e-mail saisie n'est pas valide.",
+            'logo.image'        => 'Le fichier téléversé pour le logo d\'en-tête doit être une image.',
+            'logo.mimes'        => 'Formats acceptés pour le logo d\'en-tête : PNG, JPG, JPEG, SVG, WEBP.',
+            'logo.max'          => 'Le logo d\'en-tête ne doit pas dépasser 5 Mo.',
+            'footer_logo.image' => 'Le fichier téléversé pour le logo de pied de page doit être une image.',
+            'footer_logo.mimes' => 'Formats acceptés pour le logo de pied de page : PNG, JPG, JPEG, SVG, WEBP.',
+            'footer_logo.max'   => 'Le logo de pied de page ne doit pas dépasser 5 Mo.',
         ]);
 
         $data = [
@@ -48,12 +53,13 @@ class EmailHeaderSettingController extends Controller
             'site_web'         => $request->input('site_web'),
             'matricule_fiscal' => $request->input('matricule_fiscal'),
             'show_header'      => $request->boolean('show_header', true),
+            'show_footer_logo' => $request->boolean('show_footer_logo', true),
         ];
 
-        EmailHeaderSettings::save($data, $request->file('logo'));
+        EmailHeaderSettings::save($data, $request->file('logo'), $request->file('footer_logo'));
 
         return redirect()->route('settings.email-header')
-            ->with('success', 'En-tête et logo de l\'email mis à jour avec succès !');
+            ->with('success', 'En-tête, pied de page et logos mis à jour avec succès !');
     }
 
     /**

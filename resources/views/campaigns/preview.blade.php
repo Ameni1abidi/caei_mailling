@@ -110,6 +110,26 @@
                         {!! $contenuPersonnalise !!}
                     </div>
 
+                    <!-- Pied de page officiel dans le simulateur -->
+                    <div class="p-6 bg-slate-50 border-t border-slate-100 text-center text-xs text-slate-500 space-y-2">
+                        @if(!empty($headerSettings['footer_logo_url']) && ($headerSettings['show_footer_logo'] ?? true))
+                            <div class="mb-2">
+                                <img src="{{ $headerSettings['footer_logo_url'] }}" alt="Logo Footer CAEI" class="max-w-[220px] h-auto mx-auto object-contain">
+                            </div>
+                        @endif
+                        <div class="font-bold text-slate-800 text-xs">{{ $headerSettings['company_name'] ?? 'CAEI COMPANY GROUP' }}</div>
+                        <div class="text-[11px] text-slate-500">Cabinet International d'Audit, d'Expertise et d'Ingénierie de Formation</div>
+                        <div class="text-[11px] text-slate-400">
+                            @if(!empty($headerSettings['site_web']))
+                                <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" class="text-amber-700 hover:underline">{{ $headerSettings['site_web'] }}</a>
+                                &bull;
+                            @endif
+                            @if(!empty($headerSettings['email']))
+                                <span>{{ $headerSettings['email'] }}</span>
+                            @endif
+                        </div>
+                    </div>
+
                     <!-- Attachments Footer -->
                     @if($campaign->attachments->isNotEmpty())
                         <div class="p-4 bg-slate-50 border-t border-slate-200/80">
