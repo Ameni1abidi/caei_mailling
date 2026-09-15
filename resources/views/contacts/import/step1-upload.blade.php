@@ -4,7 +4,8 @@
     {{-- Header / Stepper --}}
     <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div class="flex items-center gap-4 mb-6">
-            <a href="{{ route('contacts.index') }}" class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition">
+            <a href="{{ isset($targetCategory) ? route('categories.show', $targetCategory) : route('contacts.index') }}"
+               class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             </a>
             <div class="p-3 bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-md">
@@ -29,6 +30,20 @@
             @endforeach
         </div>
     </div>
+
+    {{-- Bandeau catégorie cible (import dédié) --}}
+    @if(isset($targetCategory) && $targetCategory)
+        <div class="flex items-center gap-3 bg-indigo-50 border border-indigo-200 text-indigo-800 px-5 py-3.5 rounded-xl shadow-sm">
+            <svg class="w-5 h-5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            <div>
+                <span class="font-bold">Import dédié à la liste :</span>
+                <span class="ml-1 font-semibold">{{ $targetCategory->name }}</span>
+                <span class="ml-2 text-xs text-indigo-600">— Les contacts importés seront automatiquement ajoutés à cette liste.</span>
+            </div>
+        </div>
+    @endif
 
     {{-- Erreurs de validation --}}
     @if($errors->any())
