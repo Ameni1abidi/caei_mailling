@@ -6,25 +6,32 @@ use Illuminate\Http\Request;
 use App\Models\Campaign;
 use App\Models\EmailLog;
 use App\Models\Contact;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        // ── Email logs stats — 1 query instead of 6 ─────────────────────
-        $emailLogStats = EmailLog::selectRaw(
-            'status,
-             COUNT(*) as cnt,
-             COALESCE(SUM(opened), 0)  as opened_cnt,
-             COALESCE(SUM(clicked), 0) as clicked_cnt'
-        )
+        $user    = Auth::user();
+        $isAdmin = $user?->hasRole('admin');
+
+        // ── Email logs stats — scoped to user's campaigns ───────────────
+        $userCampaignIds = Campaign::forUser($user)->pluck('id');
+
+        $emailLogStats = EmailLog::whereIn('campaign_id', $userCampaignIds)
+            ->selectRaw(
+                'status,
+                 COUNT(*) as cnt,
+                 COALESCE(SUM(opened), 0)  as opened_cnt,
+                 COALESCE(SUM(clicked), 0) as clicked_cnt'
+            )
             ->groupBy('status')
             ->get()
             ->keyBy('status');
 
-        $campagnesEnvoyees    = Campaign::where('statut', 'envoyee')->count();
-        $campagnesProgrammees = Campaign::where('statut', 'en_cours')->count();
+        $campagnesEnvoyees    = Campaign::forUser($user)->where('statut', 'envoyee')->count();
+        $campagnesProgrammees = Campaign::forUser($user)->where('statut', 'en_cours')->count();
 
         $sentRow      = $emailLogStats->get(EmailLog::STATUS_SENT);
         $deliveredRow = $emailLogStats->get(EmailLog::STATUS_DELIVERED);
@@ -40,7 +47,7 @@ class DashboardController extends Controller
                         + (int) ($bouncedRow?->cnt ?? 0)
                         + (int) ($invalidRow?->cnt ?? 0);
 
-        // ── Prospect stats — 1 query instead of 7 ──────────────────────
+        // ── Prospect stats — always global (contacts belong to everyone) ─
         $contactStatRows = Contact::selectRaw('prospect_status, COUNT(*) as cnt')
             ->groupBy('prospect_status')
             ->pluck('cnt', 'prospect_status');
@@ -55,32 +62,34 @@ class DashboardController extends Controller
             'client'    => (int) $contactStatRows->get(Contact::STATUS_CLIENT, 0),
         ];
 
-        // ── Campaign stats table — still 1 query with withCount ─────────
-        $campaignsWithStats = Campaign::withCount([
-            'emailLogs as envoyes_count',
-            'emailLogs as delivered_count' => function ($query) {
-                $query->where('status', EmailLog::STATUS_DELIVERED);
-            },
-            'emailLogs as bounced_count' => function ($query) {
-                $query->where('status', EmailLog::STATUS_BOUNCED);
-            },
-            'emailLogs as invalid_count' => function ($query) {
-                $query->where('status', EmailLog::STATUS_INVALID);
-            },
-            'emailLogs as ouverts_count' => function ($query) {
-                $query->where('opened', true);
-            },
-            'emailLogs as clics_count' => function ($query) {
-                $query->where('clicked', true);
-            },
-            'emailLogs as erreurs_count' => function ($query) {
-                $query->whereIn('status', [
-                    EmailLog::STATUS_FAILED,
-                    EmailLog::STATUS_BOUNCED,
-                    EmailLog::STATUS_INVALID,
-                ]);
-            }
-        ])->latest()->take(10)->get();
+        // ── Campaign stats table — scoped to user's campaigns ──────────
+        $campaignsWithStats = Campaign::forUser($user)
+            ->with('creator')
+            ->withCount([
+                'emailLogs as envoyes_count',
+                'emailLogs as delivered_count' => function ($query) {
+                    $query->where('status', EmailLog::STATUS_DELIVERED);
+                },
+                'emailLogs as bounced_count' => function ($query) {
+                    $query->where('status', EmailLog::STATUS_BOUNCED);
+                },
+                'emailLogs as invalid_count' => function ($query) {
+                    $query->where('status', EmailLog::STATUS_INVALID);
+                },
+                'emailLogs as ouverts_count' => function ($query) {
+                    $query->where('opened', true);
+                },
+                'emailLogs as clics_count' => function ($query) {
+                    $query->where('clicked', true);
+                },
+                'emailLogs as erreurs_count' => function ($query) {
+                    $query->whereIn('status', [
+                        EmailLog::STATUS_FAILED,
+                        EmailLog::STATUS_BOUNCED,
+                        EmailLog::STATUS_INVALID,
+                    ]);
+                }
+            ])->latest()->take(10)->get();
 
         return view('dashboard', compact(
             'campagnesEnvoyees',
@@ -91,7 +100,8 @@ class DashboardController extends Controller
             'emailsClics',
             'emailsRejetes',
             'prospectStats',
-            'campaignsWithStats'
+            'campaignsWithStats',
+            'isAdmin'
         ));
     }
 }

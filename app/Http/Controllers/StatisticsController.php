@@ -6,14 +6,18 @@ use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\EmailLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class StatisticsController extends Controller
 {
     public function index(Request $request)
     {
+        $user    = Auth::user();
+        $isAdmin = $user?->hasRole('admin');
+
         // ── Filters ───────────────────────────────────────────────────────
-        $period    = $request->input('period', '30');   // days
+        $period     = $request->input('period', '30');   // days
         $campaignId = $request->input('campaign_id');
 
         $dateFrom = match ($period) {
@@ -25,12 +29,14 @@ class StatisticsController extends Controller
             default => now()->subDays(30),
         };
 
-        // ── Campaign list for filter dropdown ─────────────────────────────
-        $campaigns = Campaign::select('id', 'nom', 'statut', 'created_at')
+        // ── Campaign list for filter dropdown — scoped to user ─────────────
+        $campaigns = Campaign::forUser($user)
+            ->select('id', 'nom', 'statut', 'created_at')
             ->latest()->get();
 
-        // ── Global email stats (1 query) ──────────────────────────────────
-        $emailQuery = EmailLog::query();
+        // ── Email stats — restricted to user's own campaign IDs ──────────
+        $userCampaignIds = Campaign::forUser($user)->pluck('id');
+        $emailQuery = EmailLog::whereIn('campaign_id', $userCampaignIds);
         if ($dateFrom) {
             $emailQuery->where('created_at', '>=', $dateFrom);
         }

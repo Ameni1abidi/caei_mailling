@@ -191,4 +191,32 @@ class Campaign extends Model
     {
         return $this->emailLogs()->where('status', EmailLog::STATUS_INVALID)->count();
     }
+
+    /**
+     * Scope a query to only include campaigns visible to the given user.
+     * Administrators can see all campaigns; standard users only see campaigns they created.
+     */
+    public function scopeForUser($query, ?User $user = null)
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+
+        return $query->where('created_by', $user->id);
+    }
+
+    /**
+     * Check if the campaign is owned by the given user.
+     */
+    public function isOwnedBy($user): bool
+    {
+        $userId = $user instanceof User ? $user->id : (int) $user;
+        return (int) $this->created_by === $userId;
+    }
 }
