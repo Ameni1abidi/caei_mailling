@@ -52,6 +52,13 @@
         ];
 
         $settingLinks[] = [
+            'label' => 'Pied de page Email',
+            'route' => 'settings.email-footer',
+            'active' => 'settings.email-footer*',
+            'icon' => 'email-footer',
+        ];
+
+        $settingLinks[] = [
             'label' => 'Utilisateurs',
             'route' => 'users.index',
             'active' => 'users.index',

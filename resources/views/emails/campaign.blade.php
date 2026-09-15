@@ -78,6 +78,7 @@
                     </tr>
 
                     <!-- Pied de page officiel prestigieux avec Logo CAEI -->
+                    @if($headerSettings['show_footer'] ?? true)
                     <tr>
                         <td style="background-color: #f8fafc; padding: 26px 28px; border-top: 1px solid #e2e8f0; text-align: center; color: #64748b; font-size: 11px; line-height: 1.6;">
                             @if(!empty($headerSettings['footer_logo_url']) && ($headerSettings['show_footer_logo'] ?? true))
@@ -86,7 +87,7 @@
                                         <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" style="text-decoration: none; display: inline-block;">
                                     @endif
                                     <img src="{{ $headerSettings['footer_logo_url'] }}" 
-                                         alt="{{ $headerSettings['company_name'] ?? 'CAEI' }}" 
+                                         alt="{{ $headerSettings['footer_title'] ?? $headerSettings['company_name'] ?? 'CAEI' }}" 
                                          width="260" 
                                          style="display: block; width: 260px; max-width: 85%; height: auto; border: 0; margin: 0 auto;" />
                                     @if(!empty($headerSettings['site_web']))
@@ -96,11 +97,13 @@
                             @endif
 
                             <p style="margin: 0 0 6px 0; font-weight: 700; color: #334155; font-size: 12px;">
-                                {{ $headerSettings['company_name'] ?? 'CAEI COMPANY GROUP' }}
+                                {{ $headerSettings['footer_title'] ?? $headerSettings['company_name'] ?? 'CAEI COMPANY GROUP' }}
                             </p>
-                            <p style="margin: 0 0 8px 0; color: #64748b;">
-                                Cabinet International d'Audit, d'Expertise et d'Ingénierie de Formation
-                            </p>
+                            @if(!empty($headerSettings['footer_subtitle']))
+                                <p style="margin: 0 0 8px 0; color: #64748b;">
+                                    {{ $headerSettings['footer_subtitle'] }}
+                                </p>
+                            @endif
                             <p style="margin: 0 0 12px 0;">
                                 @if(!empty($headerSettings['site_web']))
                                     <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" style="color: #b45309; text-decoration: none; font-weight: 600;">
@@ -114,19 +117,27 @@
                                     </a>
                                 @endif
                             </p>
-                            <p style="margin: 0 0 12px 0; color: #94a3b8; font-size: 10px;">
-                                Vous recevez cette communication professionnelle car vous êtes inscrit dans le réseau de contacts CAEI.
-                            </p>
+                            @if(!empty($headerSettings['footer_disclaimer']))
+                                <p style="margin: 0 0 12px 0; color: #94a3b8; font-size: 10px;">
+                                    {{ $headerSettings['footer_disclaimer'] }}
+                                </p>
+                            @endif
+                            @if(!empty($headerSettings['footer_extra_text']))
+                                <p style="margin: 0 0 12px 0; color: #94a3b8; font-size: 10px;">
+                                    {{ $headerSettings['footer_extra_text'] }}
+                                </p>
+                            @endif
                             @if(isset($contact) && $contact)
                                 <p style="margin: 0; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
                                     <a href="{{ route('contact.unsubscribe', ['email' => $contact->email]) }}"
                                        style="color: #94a3b8; text-decoration: underline; font-size: 10px;">
-                                        Se désinscrire de cette liste
+                                        {{ $headerSettings['footer_unsubscribe_text'] ?? 'Se désinscrire de cette liste' }}
                                     </a>
                                 </p>
                             @endif
                         </td>
                     </tr>
+                    @endif
                 </table>
             </td>
         </tr>

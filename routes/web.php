@@ -120,6 +120,11 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/email-header', [App\Http\Controllers\EmailHeaderSettingController::class, 'update'])->name('settings.email-header.update');
         Route::post('settings/email-header/reset', [App\Http\Controllers\EmailHeaderSettingController::class, 'reset'])->name('settings.email-header.reset');
 
+        // Personnalisation Pied de page & Footer Email (Admin)
+        Route::get('settings/email-footer', [App\Http\Controllers\EmailFooterSettingController::class, 'edit'])->name('settings.email-footer');
+        Route::post('settings/email-footer', [App\Http\Controllers\EmailFooterSettingController::class, 'update'])->name('settings.email-footer.update');
+        Route::post('settings/email-footer/reset', [App\Http\Controllers\EmailFooterSettingController::class, 'reset'])->name('settings.email-footer.reset');
+
         Route::get('users/monitoring', [UserController::class, 'monitoring'])->name('users.monitoring');
         Route::post('users/test-smtp/{user?}', [UserController::class, 'testSmtp'])->name('users.test-smtp');
         Route::resource('users', UserController::class);
