@@ -3,16 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\SmtpSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 
 class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::query()->with('roles');
+        $query = User::query()->with(['roles', 'smtpSetting']);
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -139,6 +141,10 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'roles' => ['nullable', 'array'],
             'roles.*' => ['string', Rule::exists('roles', 'name')],
+            'smtp_email' => ['nullable', 'email', 'max:255'],
+            'smtp_password' => ['nullable', 'string', 'max:255'],
+            'smtp_sender_name' => ['nullable', 'string', 'max:255'],
+            'smtp_rate_limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
         ], [
             'name.required' => 'Le nom est obligatoire.',
             'email.required' => 'L\'email est obligatoire.',
@@ -149,12 +155,35 @@ class UserController extends Controller
         ]);
 
         $roles = $validated['roles'] ?? [];
-        unset($validated['roles']);
+        unset($validated['roles'], $validated['smtp_email'], $validated['smtp_password'], $validated['smtp_sender_name'], $validated['smtp_rate_limit']);
         $validated['password'] = Hash::make($validated['password']);
 
         $user = User::create($validated);
         if (!empty($roles)) {
             $user->syncRoles($roles);
+        }
+
+        if ($request->filled('smtp_email')) {
+            $smtpData = [
+                'user_id' => $user->id,
+                'provider' => 'OVHcloud SMTP',
+                'driver' => 'smtp',
+                'host' => 'ssl0.ovh.net',
+                'port' => 587,
+                'encryption' => 'tls',
+                'username' => trim($request->input('smtp_email')),
+                'sender_email' => trim($request->input('smtp_email')),
+                'sender_name' => $request->filled('smtp_sender_name') ? trim($request->input('smtp_sender_name')) : $user->name,
+                'reply_to_email' => trim($request->input('smtp_email')),
+                'rate_limit' => max(1, (int) $request->input('smtp_rate_limit', 3)),
+                'is_active' => true,
+            ];
+
+            if ($request->filled('smtp_password')) {
+                $smtpData['password'] = $request->input('smtp_password');
+            }
+
+            $user->smtpSetting()->updateOrCreate(['user_id' => $user->id], $smtpData);
         }
 
         $successMsg = "Utilisateur {$user->name} ({$user->email}) créé avec succès.";
@@ -168,6 +197,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        $user->load(['roles', 'smtpSetting']);
         $roles = Role::orderBy('name')->pluck('name');
 
         return view('users.edit', compact('user', 'roles'));
@@ -181,6 +211,10 @@ class UserController extends Controller
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'roles' => ['nullable', 'array'],
             'roles.*' => ['string', Rule::exists('roles', 'name')],
+            'smtp_email' => ['nullable', 'email', 'max:255'],
+            'smtp_password' => ['nullable', 'string', 'max:255'],
+            'smtp_sender_name' => ['nullable', 'string', 'max:255'],
+            'smtp_rate_limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
         ], [
             'name.required' => 'Le nom est obligatoire.',
             'email.required' => 'L\'email est obligatoire.',
@@ -190,7 +224,7 @@ class UserController extends Controller
         ]);
 
         $roles = $validated['roles'] ?? [];
-        unset($validated['roles']);
+        unset($validated['roles'], $validated['smtp_email'], $validated['smtp_password'], $validated['smtp_sender_name'], $validated['smtp_rate_limit']);
 
         if (empty($validated['password'])) {
             unset($validated['password']);
@@ -201,6 +235,31 @@ class UserController extends Controller
         $user->update($validated);
         $user->syncRoles($roles);
 
+        if ($request->filled('smtp_email')) {
+            $smtpData = [
+                'user_id' => $user->id,
+                'provider' => 'OVHcloud SMTP',
+                'driver' => 'smtp',
+                'host' => 'ssl0.ovh.net',
+                'port' => 587,
+                'encryption' => 'tls',
+                'username' => trim($request->input('smtp_email')),
+                'sender_email' => trim($request->input('smtp_email')),
+                'sender_name' => $request->filled('smtp_sender_name') ? trim($request->input('smtp_sender_name')) : $user->name,
+                'reply_to_email' => trim($request->input('smtp_email')),
+                'rate_limit' => max(1, (int) $request->input('smtp_rate_limit', 3)),
+                'is_active' => true,
+            ];
+
+            if ($request->filled('smtp_password')) {
+                $smtpData['password'] = $request->input('smtp_password');
+            }
+
+            $user->smtpSetting()->updateOrCreate(['user_id' => $user->id], $smtpData);
+        } elseif ($user->smtpSetting) {
+            $user->smtpSetting()->delete();
+        }
+
         $successMsg = "Utilisateur {$user->name} mis à jour avec succès.";
 
         if ($request->input('source') === 'settings' || $request->input('redirect_to') === 'profile') {
@@ -208,6 +267,53 @@ class UserController extends Controller
         }
 
         return redirect()->route('users.index')->with('success', $successMsg);
+    }
+
+    /**
+     * Test SMTP connection for given email & password in real time via AJAX.
+     */
+    public function testSmtp(Request $request, ?User $user = null)
+    {
+        $email = trim((string) $request->input('smtp_email'));
+        $password = (string) $request->input('smtp_password');
+
+        if (! $email) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Veuillez saisir une adresse email OVH valide.',
+            ]);
+        }
+
+        if (empty($password) && $user && $user->smtpSetting) {
+            $password = (string) $user->smtpSetting->password;
+        }
+
+        if (empty($password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Veuillez renseigner le mot de passe de la boîte OVH pour effectuer le test.',
+            ]);
+        }
+
+        try {
+            // Port 587 STARTTLS
+            $transport = new EsmtpTransport('ssl0.ovh.net', 587, false);
+            $transport->setUsername($email);
+            $transport->setPassword($password);
+
+            $transport->start();
+            $transport->stop();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Connexion OVH réussie ! La boîte {$email} répond parfaitement et est prête à envoyer.",
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Échec de connexion OVH : ' . $e->getMessage(),
+            ]);
+        }
     }
 
     public function destroy(Request $request, User $user)

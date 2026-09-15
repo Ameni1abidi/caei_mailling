@@ -20,7 +20,8 @@ class Campaign extends Model
         'statut',
         'auto_retry',
         'max_auto_retries',
-        'created_by'
+        'created_by',
+        'smtp_setting_id',
     ];
 
     protected function casts(): array
@@ -110,6 +111,41 @@ class Campaign extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the explicitly assigned SMTP setting for this campaign.
+     */
+    public function smtpSetting(): BelongsTo
+    {
+        return $this->belongsTo(SmtpSetting::class);
+    }
+
+    /**
+     * Resolve the active SMTP setting for this campaign:
+     * 1. Explicitly assigned on campaign
+     * 2. Creator's personal SMTP setting
+     * 3. System default active SMTP setting
+     */
+    public function resolveSmtpSetting(): ?SmtpSetting
+    {
+        if ($this->smtp_setting_id && $this->smtpSetting) {
+            return $this->smtpSetting;
+        }
+
+        if ($this->relationLoaded('creator') && $this->creator?->smtpSetting) {
+            return $this->creator->smtpSetting;
+        }
+
+        if ($this->created_by) {
+            $creator = $this->creator ?? User::find($this->created_by);
+            if ($creator?->smtpSetting) {
+                return $creator->smtpSetting;
+            }
+        }
+
+        return SmtpSetting::where('is_active', true)->whereNull('user_id')->first()
+            ?? SmtpSetting::where('is_active', true)->first();
     }
 
     public function markAsSentIfAllEmailsAreSent(): bool

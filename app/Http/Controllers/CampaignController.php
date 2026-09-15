@@ -56,7 +56,11 @@ class CampaignController extends Controller
             $template = EmailTemplate::where('is_active', true)->findOrFail($request->template_id);
         }
 
-        return view('campaigns.create', compact('categories', 'importLogs', 'template', 'totalContacts'));
+        $senderSmtp = Auth::user()?->smtpSetting
+            ?? SmtpSetting::where('is_active', true)->whereNull('user_id')->first()
+            ?? SmtpSetting::where('is_active', true)->first();
+
+        return view('campaigns.create', compact('categories', 'importLogs', 'template', 'totalContacts', 'senderSmtp'));
     }
 
     public function store(Request $request)
@@ -64,6 +68,7 @@ class CampaignController extends Controller
         $validated = $this->validatedCampaign($request);
         $validated['created_by'] = Auth::id();
         $validated['statut'] = 'brouillon';
+        $validated['smtp_setting_id'] = $request->input('smtp_setting_id') ?? Auth::user()?->smtpSetting?->id;
 
         $campaign = Campaign::create($validated);
 
@@ -73,7 +78,7 @@ class CampaignController extends Controller
 
     public function edit(Campaign $campaign)
     {
-        $campaign->load(['attachments', 'importLog']);
+        $campaign->load(['attachments', 'importLog', 'creator.smtpSetting', 'smtpSetting']);
         $categories = Category::withCount('contacts')->orderBy('name')->get();
         $importLogs = ImportLog::where('imported', '>', 0)->latest()->get();
         $totalContacts = Contact::count();
@@ -95,8 +100,10 @@ class CampaignController extends Controller
             ->get();
         $failedCount = $failedLogs->count();
 
+        $senderSmtp = $campaign->resolveSmtpSetting();
+
         return view('campaigns.edit', compact(
-            'campaign', 'categories', 'importLogs', 'nbDestinataires', 'totalContacts', 'failedLogs', 'failedCount'
+            'campaign', 'categories', 'importLogs', 'nbDestinataires', 'totalContacts', 'failedLogs', 'failedCount', 'senderSmtp'
         ));
     }
 
@@ -121,8 +128,8 @@ class CampaignController extends Controller
             return back()->with('error', 'Aucun email en échec à relancer pour cette campagne.');
         }
 
-        $smtp = SmtpSetting::where('is_active', true)->first();
-        $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 60));
+        $smtp = $campaign->resolveSmtpSetting();
+        $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 3));
         $delayBetweenEmails = (int) ceil(60 / $rateLimit);
 
         $queueConnection = $this->resolveQueueConnection();
@@ -330,8 +337,8 @@ class CampaignController extends Controller
             ->pluck('contact_id')
             ->flip(); // O(1) lookup
 
-        $smtp              = SmtpSetting::where('is_active', true)->first();
-        $rateLimit         = max(1, (int) ($smtp?->rate_limit ?? 60));
+        $smtp              = $campaign->resolveSmtpSetting();
+        $rateLimit         = max(1, (int) ($smtp?->rate_limit ?? 3));
         $delayBetweenEmails = (int) ceil(60 / $rateLimit);
         $queueConnection   = $this->resolveQueueConnection();
 
@@ -490,6 +497,7 @@ class CampaignController extends Controller
             'targeting_mode'   => 'nullable|string',
             'auto_retry'       => 'nullable|boolean',
             'max_auto_retries' => 'nullable|integer|min:1|max:5',
+            'smtp_setting_id'  => 'nullable|exists:smtp_settings,id',
         ]);
 
         $validated['auto_retry']       = $request->boolean('auto_retry', true);

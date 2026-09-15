@@ -88,6 +88,17 @@
                                                 @endif
                                             </div>
                                             <div class="text-xs text-slate-500">{{ $user->email }}</div>
+                                            @if($user->smtpSetting)
+                                                <div class="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium mt-0.5" title="Boîte d'envoi OVH dédiée">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                    <span>{{ $user->smtpSetting->sender_email }}</span>
+                                                </div>
+                                            @else
+                                                <div class="inline-flex items-center gap-1 text-[11px] text-slate-400 font-medium mt-0.5" title="Boîte par défaut">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                                                    <span>Boîte par défaut</span>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 </td>

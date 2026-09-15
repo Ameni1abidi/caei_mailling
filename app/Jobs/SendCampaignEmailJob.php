@@ -25,11 +25,10 @@ class SendCampaignEmailJob implements ShouldQueue
     public bool $deleteWhenMissingModels = true;
 
     /**
-     * SMTP config cached for the lifetime of the worker process.
-     * Avoids a DB query on every single job execution.
+     * SMTP config cached per setting ID for the lifetime of the worker process.
+     * Avoids a DB query on every single job execution while supporting multi-SMTP.
      */
-    private static ?array $cachedSmtpConfig = null;
-    private static bool $smtpCacheLoaded = false;
+    private static array $cachedSmtpConfigs = [];
 
     public function __construct(
         public Campaign $campaign,
@@ -44,8 +43,8 @@ class SendCampaignEmailJob implements ShouldQueue
             return;
         }
 
-        // Single DB fetch for campaign — reuse for all checks below
-        $campaign = Campaign::find($this->campaign->id);
+        // Single DB fetch for campaign with relationships — reuse for all checks below
+        $campaign = Campaign::with(['creator.smtpSetting', 'smtpSetting'])->find($this->campaign->id);
         if (! $campaign || $campaign->statut === 'annulee') {
             $emailLog->update([
                 'status'        => EmailLog::STATUS_FAILED,
@@ -77,10 +76,10 @@ class SendCampaignEmailJob implements ShouldQueue
         try {
             $mailable = new CampaignMail($campaign, $this->contact, $this->emailLogId);
 
-            $smtpConfig = $this->resolveSmtpConfig();
+            $smtpConfig = $this->resolveSmtpConfig($campaign);
 
             if ($smtpConfig !== null) {
-                $mailerName = 'dynamic_smtp';
+                $mailerName = 'dynamic_smtp_' . ($campaign->resolveSmtpSetting()?->id ?? 'default');
                 Config::set("mail.mailers.{$mailerName}", $smtpConfig['mailer']);
 
                 if ($smtpConfig['sender_email']) {
@@ -129,18 +128,16 @@ class SendCampaignEmailJob implements ShouldQueue
     }
 
     /**
-     * Resolve SMTP config with process-level cache.
-     * The config is fetched once per worker lifecycle, not once per job.
-     * Cache is busted on worker restart (which is fine — settings rarely change).
+     * Resolve SMTP config with process-level cache per SMTP account.
      */
-    private function resolveSmtpConfig(): ?array
+    private function resolveSmtpConfig(?Campaign $campaign): ?array
     {
-        if (! self::$smtpCacheLoaded) {
-            $smtp = SmtpSetting::where('is_active', true)->first();
-            self::$smtpCacheLoaded = true;
+        $smtp = $campaign?->resolveSmtpSetting();
+        $cacheKey = $smtp ? (int) $smtp->id : 0;
 
+        if (! array_key_exists($cacheKey, self::$cachedSmtpConfigs)) {
             if ($smtp) {
-                self::$cachedSmtpConfig = [
+                self::$cachedSmtpConfigs[$cacheKey] = [
                     'mailer' => [
                         'transport'  => $smtp->driver ?? 'smtp',
                         'host'       => $smtp->host,
@@ -155,11 +152,11 @@ class SendCampaignEmailJob implements ShouldQueue
                     'reply_to'     => $smtp->reply_to_email ? trim($smtp->reply_to_email) : ($smtp->sender_email ?: config('mail.from.address', 'Contact@caei-afri.com')),
                 ];
             } else {
-                self::$cachedSmtpConfig = null;
+                self::$cachedSmtpConfigs[$cacheKey] = null;
             }
         }
 
-        return self::$cachedSmtpConfig;
+        return self::$cachedSmtpConfigs[$cacheKey];
     }
 
     private function determineFailureStatus(\Throwable $exception): string

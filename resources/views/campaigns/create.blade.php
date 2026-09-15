@@ -59,6 +59,28 @@
                 <!-- Main Form Card (2 cols) -->
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-5">
+                        <!-- Boîte d'envoi automatique -->
+                        <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-emerald-950">Boîte d'envoi OVH :</span>
+                                    <span class="text-emerald-800 font-medium">
+                                        {{ $senderSmtp?->sender_name ?? auth()->user()->name }}
+                                        &lt;{{ $senderSmtp?->sender_email ?? 'contact@caei-afri.com' }}&gt;
+                                    </span>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center gap-1 font-semibold text-[11px] text-emerald-700 bg-emerald-100/70 px-2.5 py-1 rounded-full shrink-0">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Quota sécurisé 180 emails/h
+                            </span>
+                        </div>
+
                         <!-- Nom de la campagne -->
                         <div>
                             <label for="nom" class="block text-sm font-bold text-slate-800 mb-1.5">

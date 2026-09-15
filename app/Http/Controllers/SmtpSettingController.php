@@ -12,7 +12,7 @@ class SmtpSettingController extends Controller
 {
     public function index()
     {
-        $smtpSettings = SmtpSetting::latest()->get();
+        $smtpSettings = SmtpSetting::with('user')->latest()->get();
 
         return view('smtp-settings.index', compact('smtpSettings'));
     }
