@@ -121,6 +121,7 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/email-header/reset', [App\Http\Controllers\EmailHeaderSettingController::class, 'reset'])->name('settings.email-header.reset');
 
         Route::get('users/monitoring', [UserController::class, 'monitoring'])->name('users.monitoring');
+        Route::post('users/test-smtp/{user?}', [UserController::class, 'testSmtp'])->name('users.test-smtp');
         Route::resource('users', UserController::class);
 
         // GrapesJS Builder Routes

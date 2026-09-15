@@ -81,7 +81,18 @@
                                             </div>
                                             <div>
                                                 <div class="text-sm font-semibold text-gray-900">{{ $setting->provider }}</div>
-                                                <div class="text-xs text-gray-500">{{ $setting->driver }}</div>
+                                                <div class="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                                                    <span>{{ $setting->driver }}</span>
+                                                    @if($setting->user)
+                                                        <span class="inline-flex items-center gap-1 text-[10px] text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100">
+                                                            {{ $setting->user->name }}
+                                                        </span>
+                                                    @else
+                                                        <span class="inline-flex items-center gap-1 text-[10px] text-slate-500 font-medium bg-slate-50 px-1.5 py-0.2 rounded">
+                                                            Général
+                                                        </span>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     </td>

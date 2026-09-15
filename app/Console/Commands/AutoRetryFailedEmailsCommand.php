@@ -19,17 +19,17 @@ class AutoRetryFailedEmailsCommand extends Command
     {
         $this->info('Vérification des emails en échec à relancer automatiquement...');
 
-        $smtp              = SmtpSetting::where('is_active', true)->first();
-        $rateLimit         = max(1, (int) ($smtp?->rate_limit ?? 60));
-        $delayBetweenEmails = (int) ceil(60 / $rateLimit);
-
         $totalRelances = 0;
 
         // Process each auto-retry campaign
         Campaign::where('auto_retry', true)
-            ->select(['id', 'nom', 'max_auto_retries'])
-            ->each(function (Campaign $campaign) use ($delayBetweenEmails, &$totalRelances) {
-                $maxRetries = max(1, (int) ($campaign->max_auto_retries ?? 3));
+            ->with(['creator.smtpSetting', 'smtpSetting'])
+            ->select(['id', 'nom', 'max_auto_retries', 'created_by', 'smtp_setting_id'])
+            ->each(function (Campaign $campaign) use (&$totalRelances) {
+                $smtp               = $campaign->resolveSmtpSetting();
+                $rateLimit          = max(1, (int) ($smtp?->rate_limit ?? 3));
+                $delayBetweenEmails = (int) ceil(60 / $rateLimit);
+                $maxRetries         = max(1, (int) ($campaign->max_auto_retries ?? 3));
 
                 // Collect IDs of failed logs eligible for retry
                 $failedLogIds = EmailLog::where('campaign_id', $campaign->id)

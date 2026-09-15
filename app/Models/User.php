@@ -48,6 +48,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the SMTP setting assigned to this user.
+     */
+    public function smtpSetting(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SmtpSetting::class);
+    }
+
+    /**
      * Calculate monitoring statistics for this user.
      */
     public function getStatsAttribute(): array

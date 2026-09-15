@@ -78,8 +78,8 @@ class DispatchScheduledCampaignsCommand extends Command
             ->pluck('contact_id')
             ->flip();
 
-        $smtp               = SmtpSetting::where('is_active', true)->first();
-        $rateLimit          = max(1, (int) ($smtp?->rate_limit ?? 60));
+        $smtp               = $campaign->resolveSmtpSetting();
+        $rateLimit          = max(1, (int) ($smtp?->rate_limit ?? 3));
         $delayBetweenEmails = (int) ceil(60 / $rateLimit);
         $jobIndex           = 0;
         $totalDispatched    = 0;

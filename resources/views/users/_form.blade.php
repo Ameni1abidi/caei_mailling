@@ -105,6 +105,149 @@
         </div>
     </div>
 
+    {{-- Section Configuration Boîte d'envoi OVH (Expéditeur) --}}
+    @php
+        $userSmtp = isset($user) ? $user->smtpSetting : null;
+    @endphp
+    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-6"
+         x-data="{
+             smtpEmail: '{{ old('smtp_email', $userSmtp?->sender_email ?? '') }}',
+             smtpPassword: '',
+             smtpSenderName: '{{ old('smtp_sender_name', $userSmtp?->sender_name ?? '') }}',
+             testingSmtp: false,
+             smtpTestResult: null,
+             testConnection() {
+                 if (!this.smtpEmail) {
+                     this.smtpTestResult = { success: false, message: 'Veuillez saisir une adresse email OVH.' };
+                     return;
+                 }
+                 this.testingSmtp = true;
+                 this.smtpTestResult = null;
+                 fetch('{{ isset($user) ? route('users.test-smtp', $user) : route('users.test-smtp') }}', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '{{ csrf_token() }}',
+                         'Accept': 'application/json'
+                     },
+                     body: JSON.stringify({
+                         smtp_email: this.smtpEmail,
+                         smtp_password: this.smtpPassword
+                     })
+                 })
+                 .then(r => r.json())
+                 .then(data => {
+                     this.smtpTestResult = data;
+                     this.testingSmtp = false;
+                 })
+                 .catch(() => {
+                     this.smtpTestResult = { success: false, message: 'Erreur réseau lors du test de connexion.' };
+                     this.testingSmtp = false;
+                 });
+             }
+         }">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100 flex-wrap gap-3">
+            <div class="flex items-center gap-2.5">
+                <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="font-bold text-slate-900 text-base">Boîte d'envoi e-mail OVH (Expéditeur)</h2>
+                    <p class="text-xs text-slate-400">Les campagnes créées par cet utilisateur partiront automatiquement depuis cette boîte</p>
+                </div>
+            </div>
+            @if($userSmtp)
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Boîte dédiée active ({{ $userSmtp->sender_email }})
+                </span>
+            @else
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                    Par défaut : contact@caei-afri.com
+                </span>
+            @endif
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label for="smtp_email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Adresse e-mail OVH
+                </label>
+                <input type="email" name="smtp_email" id="smtp_email" x-model="smtpEmail"
+                       value="{{ old('smtp_email', $userSmtp?->sender_email ?? '') }}"
+                       placeholder="ex: commercial@caei-afri.com"
+                       class="w-full text-sm py-2.5 px-3.5 border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                <p class="mt-1 text-xs text-slate-400">Laissez vide pour utiliser la boîte générale principale.</p>
+            </div>
+
+            <div>
+                <label for="smtp_password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Mot de passe de la boîte OVH
+                </label>
+                <input type="password" name="smtp_password" id="smtp_password" x-model="smtpPassword"
+                       placeholder="@if($userSmtp) Laisser vide pour conserver le mot de passe actuel @else Mot de passe boîte OVH @endif"
+                       class="w-full text-sm py-2.5 px-3.5 border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                <p class="mt-1 text-xs text-slate-400">
+                    @if($userSmtp)
+                        Un mot de passe est déjà enregistré. Remplissez uniquement pour le changer.
+                    @else
+                        Mot de passe configuré sur l'espace client OVH.
+                    @endif
+                </p>
+            </div>
+
+            <div>
+                <label for="smtp_sender_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Nom d'affichage de l'expéditeur
+                </label>
+                <input type="text" name="smtp_sender_name" id="smtp_sender_name" x-model="smtpSenderName"
+                       value="{{ old('smtp_sender_name', $userSmtp?->sender_name ?? '') }}"
+                       placeholder="ex: Jean Dupont - CAEI"
+                       class="w-full text-sm py-2.5 px-3.5 border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                <p class="mt-1 text-xs text-slate-400">Si vide, le nom complet de l'utilisateur sera utilisé.</p>
+            </div>
+
+            <div>
+                <label for="smtp_rate_limit" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Limite horaire sécurisée
+                </label>
+                <div class="flex items-center gap-2">
+                    <input type="number" name="smtp_rate_limit" id="smtp_rate_limit"
+                           value="{{ old('smtp_rate_limit', $userSmtp?->rate_limit ?? 3) }}"
+                           min="1" max="60"
+                           class="w-24 text-sm py-2.5 px-3.5 border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                    <span class="text-xs text-slate-600 font-medium">emails / minute (= 180 emails/heure)</span>
+                </div>
+                <p class="mt-1 text-xs text-emerald-600 font-medium">✓ 3 emails/min garantit de ne JAMAIS dépasser le quota de 200/h d'OVH.</p>
+            </div>
+        </div>
+
+        {{-- Bouton Test de connexion SMTP OVH --}}
+        <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <button type="button" @click="testConnection()" :disabled="testingSmtp"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition disabled:opacity-50">
+                <svg x-show="!testingSmtp" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <svg x-show="testingSmtp" class="w-4 h-4 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24" style="display:none;">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span x-text="testingSmtp ? 'Test de connexion OVH en cours...' : 'Tester la connexion de la boîte OVH'"></span>
+            </button>
+
+            <template x-if="smtpTestResult !== null">
+                <div class="flex-1 text-xs p-2.5 rounded-lg font-medium flex items-center gap-2"
+                     :class="smtpTestResult.success ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                    <span x-text="smtpTestResult.success ? '✅' : '❌'"></span>
+                    <span x-text="smtpTestResult.message"></span>
+                </div>
+            </template>
+        </div>
+    </div>
+
     <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
         <div class="flex items-center gap-2.5 pb-4 border-b border-slate-100">
             <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">

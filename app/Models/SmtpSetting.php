@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class SmtpSetting extends Model
 {
     protected $fillable = [
+        'user_id',
         'provider',
         'driver',
         'host',
@@ -21,6 +22,11 @@ class SmtpSetting extends Model
         'rate_limit',
         'is_active',
     ];
+
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     protected function casts(): array
     {
