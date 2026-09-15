@@ -9,8 +9,21 @@
                     </svg>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Campagnes</h1>
-                    <p class="text-sm text-slate-500 mt-0.5">Pilotez, planifiez et suivez l'envoi de vos emails de masse</p>
+                    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        @if($isAdmin)
+                            Toutes les campagnes
+                            <span class="ml-2 text-xs font-semibold px-2.5 py-0.5 bg-amber-100 text-amber-700 rounded-full border border-amber-200 align-middle">Vue Admin</span>
+                        @else
+                            Mes campagnes
+                        @endif
+                    </h1>
+                    <p class="text-sm text-slate-500 mt-0.5">
+                        @if($isAdmin)
+                            Vue complète de toutes les campagnes de l'équipe
+                        @else
+                            Vos campagnes personnelles — Pilotez, planifiez et suivez l'envoi de vos emails
+                        @endif
+                    </p>
                 </div>
             </div>
             <a href="{{ route('campaigns.create') }}" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all duration-150 transform hover:-translate-y-0.5">
@@ -129,6 +142,9 @@
                         <tr>
                             <th class="px-6 py-4">Campagne</th>
                             <th class="px-6 py-4">Objet</th>
+                            @if($isAdmin)
+                                <th class="px-6 py-4">Créateur</th>
+                            @endif
                             <th class="px-6 py-4">Cible</th>
                             <th class="px-6 py-4">Statut</th>
                             <th class="px-6 py-4 text-right">Actions</th>
@@ -150,6 +166,16 @@
                                 <td class="px-6 py-4 text-slate-600 truncate max-w-xs" title="{{ $campaign->objet }}">
                                     {{ $campaign->objet }}
                                 </td>
+                                @if($isAdmin)
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                                            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                            </svg>
+                                            {{ $campaign->creator?->name ?? '—' }}
+                                        </span>
+                                    </td>
+                                @endif
                                 <td class="px-6 py-4">
                                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
                                         <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

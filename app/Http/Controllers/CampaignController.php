@@ -19,7 +19,11 @@ class CampaignController extends Controller
 {
     public function index()
     {
-        $campaigns = Campaign::with(['category', 'importLog'])
+        $user = Auth::user();
+        $isAdmin = $user?->hasRole('admin');
+
+        $campaigns = Campaign::forUser($user)
+            ->with(['category', 'importLog', 'creator'])
             ->withCount([
                 'emailLogs as failed_count' => function ($query) {
                     $query->whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED]);
@@ -28,8 +32,9 @@ class CampaignController extends Controller
             ->latest()
             ->paginate(20);
 
-        // Single query instead of 5 separate COUNT queries
-        $statsByStatus = Campaign::selectRaw('statut, COUNT(*) as cnt')
+        // Stats scoped to user's own campaigns only
+        $statsByStatus = Campaign::forUser($user)
+            ->selectRaw('statut, COUNT(*) as cnt')
             ->groupBy('statut')
             ->pluck('cnt', 'statut');
 
@@ -42,7 +47,7 @@ class CampaignController extends Controller
             'annulee'    => $statsByStatus->get('annulee', 0),
         ];
 
-        return view('campaigns.index', compact('campaigns', 'stats'));
+        return view('campaigns.index', compact('campaigns', 'stats', 'isAdmin'));
     }
 
     public function create(Request $request)
@@ -78,6 +83,8 @@ class CampaignController extends Controller
 
     public function edit(Campaign $campaign)
     {
+        \Illuminate\Support\Facades\Gate::authorize('update', $campaign);
+
         $campaign->load(['attachments', 'importLog', 'creator.smtpSetting', 'smtpSetting']);
         $categories = Category::withCount('contacts')->orderBy('name')->get();
         $importLogs = ImportLog::where('imported', '>', 0)->latest()->get();
@@ -109,6 +116,8 @@ class CampaignController extends Controller
 
     public function update(Request $request, Campaign $campaign)
     {
+        \Illuminate\Support\Facades\Gate::authorize('update', $campaign);
+
         $campaign->update($this->validatedCampaign($request));
 
         return redirect()->route('campaigns.edit', $campaign)->with('success', 'Campagne mise à jour.');
@@ -119,6 +128,8 @@ class CampaignController extends Controller
      */
     public function retryFailed(Request $request, Campaign $campaign)
     {
+        \Illuminate\Support\Facades\Gate::authorize('retry', $campaign);
+
         $failedLogs = EmailLog::where('campaign_id', $campaign->id)
             ->whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED])
             ->with('contact:id,email')
@@ -177,6 +188,8 @@ class CampaignController extends Controller
      */
     public function cancel(Campaign $campaign)
     {
+        \Illuminate\Support\Facades\Gate::authorize('cancel', $campaign);
+
         if (in_array($campaign->statut, ['envoyee', 'annulee'])) {
             return back()->with('error', 'Cette campagne ne peut plus être annulée (déjà envoyée ou annulée).');
         }
@@ -221,6 +234,8 @@ class CampaignController extends Controller
 
     public function destroy(Campaign $campaign)
     {
+        \Illuminate\Support\Facades\Gate::authorize('delete', $campaign);
+
         if ($campaign->statut === 'en_cours') {
             return back()->with('error', 'Impossible de supprimer une campagne en cours d\'envoi. Veuillez d\'abord l\'annuler.');
         }
@@ -232,6 +247,8 @@ class CampaignController extends Controller
 
     public function preview(Campaign $campaign, Request $request)
     {
+        \Illuminate\Support\Facades\Gate::authorize('view', $campaign);
+
         $campaign->load(['attachments', 'importLog']);
 
         if ($campaign->import_log_id) {
@@ -300,6 +317,8 @@ class CampaignController extends Controller
 
     public function send(Campaign $campaign)
     {
+        \Illuminate\Support\Facades\Gate::authorize('send', $campaign);
+
         // Protection anti-doublon : verrouiller la ligne et vérifier le statut
         $campaign = Campaign::lockForUpdate()->find($campaign->id);
         if (! $campaign || ! in_array($campaign->statut, ['brouillon', 'programmee'])) {
@@ -421,6 +440,8 @@ class CampaignController extends Controller
      */
     public function scheduleCampaign(Campaign $campaign, Request $request)
     {
+        \Illuminate\Support\Facades\Gate::authorize('schedule', $campaign);
+
         $campaign = Campaign::lockForUpdate()->find($campaign->id);
         if (! $campaign || ! in_array($campaign->statut, ['brouillon', 'programmee'])) {
             return back()->with('error', 'Seules les campagnes en brouillon peuvent être programmées.');
@@ -452,6 +473,8 @@ class CampaignController extends Controller
      */
     public function unscheduleCampaign(Campaign $campaign)
     {
+        \Illuminate\Support\Facades\Gate::authorize('schedule', $campaign);
+
         if ($campaign->statut !== 'programmee') {
             return back()->with('error', 'Cette campagne n\'est pas programmée.');
         }
