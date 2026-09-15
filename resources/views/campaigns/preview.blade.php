@@ -111,24 +111,47 @@
                     </div>
 
                     <!-- Pied de page officiel dans le simulateur -->
-                    <div class="p-6 bg-slate-50 border-t border-slate-100 text-center text-xs text-slate-500 space-y-2">
-                        @if(!empty($headerSettings['footer_logo_url']) && ($headerSettings['show_footer_logo'] ?? true))
-                            <div class="mb-2">
-                                <img src="{{ $headerSettings['footer_logo_url'] }}" alt="Logo Footer CAEI" class="max-w-[220px] h-auto mx-auto object-contain">
+                    @if($headerSettings['show_footer'] ?? true)
+                        <div class="p-6 bg-slate-50 border-t border-slate-100 text-center text-xs text-slate-500 space-y-2">
+                            @if(!empty($headerSettings['footer_logo_url']) && ($headerSettings['show_footer_logo'] ?? true))
+                                <div class="mb-2">
+                                    <img src="{{ $headerSettings['footer_logo_url'] }}" alt="{{ $headerSettings['footer_title'] ?? 'Footer' }}" class="max-w-[220px] h-auto mx-auto object-contain">
+                                </div>
+                            @endif
+                            <div class="font-bold text-slate-800 text-xs">
+                                {{ $headerSettings['footer_title'] ?? $headerSettings['company_name'] ?? 'CAEI COMPANY GROUP' }}
                             </div>
-                        @endif
-                        <div class="font-bold text-slate-800 text-xs">{{ $headerSettings['company_name'] ?? 'CAEI COMPANY GROUP' }}</div>
-                        <div class="text-[11px] text-slate-500">Cabinet International d'Audit, d'Expertise et d'Ingénierie de Formation</div>
-                        <div class="text-[11px] text-slate-400">
-                            @if(!empty($headerSettings['site_web']))
-                                <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" class="text-amber-700 hover:underline">{{ $headerSettings['site_web'] }}</a>
-                                &bull;
+                            @if(!empty($headerSettings['footer_subtitle']))
+                                <div class="text-[11px] text-slate-500">
+                                    {{ $headerSettings['footer_subtitle'] }}
+                                </div>
                             @endif
-                            @if(!empty($headerSettings['email']))
-                                <span>{{ $headerSettings['email'] }}</span>
+                            <div class="text-[11px] text-slate-400">
+                                @if(!empty($headerSettings['site_web']))
+                                    <a href="{{ str_starts_with($headerSettings['site_web'], 'http') ? $headerSettings['site_web'] : 'https://' . $headerSettings['site_web'] }}" target="_blank" class="text-amber-700 hover:underline">{{ $headerSettings['site_web'] }}</a>
+                                    &bull;
+                                @endif
+                                @if(!empty($headerSettings['email']))
+                                    <span>{{ $headerSettings['email'] }}</span>
+                                @endif
+                            </div>
+                            @if(!empty($headerSettings['footer_disclaimer']))
+                                <div class="text-[10px] text-slate-400 max-w-lg mx-auto leading-normal">
+                                    {{ $headerSettings['footer_disclaimer'] }}
+                                </div>
                             @endif
+                            @if(!empty($headerSettings['footer_extra_text']))
+                                <div class="text-[10px] text-slate-400 max-w-lg mx-auto leading-normal">
+                                    {{ $headerSettings['footer_extra_text'] }}
+                                </div>
+                            @endif
+                            <div class="pt-2 border-t border-slate-200/60 max-w-xs mx-auto">
+                                <span class="text-[10px] text-slate-400 underline cursor-not-allowed">
+                                    {{ $headerSettings['footer_unsubscribe_text'] ?? 'Se désinscrire de cette liste' }}
+                                </span>
+                            </div>
                         </div>
-                    </div>
+                    @endif
 
                     <!-- Attachments Footer -->
                     @if($campaign->attachments->isNotEmpty())

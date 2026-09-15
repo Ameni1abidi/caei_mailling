@@ -16,16 +16,22 @@ class EmailHeaderSettings
     public static function defaults(): array
     {
         return [
-            'company_name'     => 'CAEI COMPANY GROUP',
-            'siege_social'     => 'SIS 8 Rue Claude Bernard 1002 Belvédère-Tunis Tunisie',
-            'telephone'        => '+216 58 332 143',
-            'email'            => 'Training@caei-afri.com',
-            'site_web'         => 'www.caei-afri.com',
-            'matricule_fiscal' => '1821205 MAM 000',
-            'logo_path'        => null,
-            'show_header'      => true,
-            'footer_logo_path' => null,
-            'show_footer_logo' => true,
+            'company_name'            => 'CAEI COMPANY GROUP',
+            'siege_social'            => 'SIS 8 Rue Claude Bernard 1002 Belvédère-Tunis Tunisie',
+            'telephone'               => '+216 58 332 143',
+            'email'                   => 'Training@caei-afri.com',
+            'site_web'                => 'www.caei-afri.com',
+            'matricule_fiscal'        => '1821205 MAM 000',
+            'logo_path'               => null,
+            'show_header'             => true,
+            'show_footer'             => true,
+            'footer_logo_path'        => null,
+            'show_footer_logo'        => true,
+            'footer_title'            => 'CAEI COMPANY GROUP',
+            'footer_subtitle'         => "Cabinet International d'Audit, d'Expertise et d'Ingénierie de Formation",
+            'footer_disclaimer'       => "Vous recevez cette communication professionnelle car vous êtes inscrit dans le réseau de contacts CAEI.",
+            'footer_unsubscribe_text' => "Se désinscrire de cette liste",
+            'footer_extra_text'       => null,
         ];
     }
 
@@ -65,16 +71,22 @@ class EmailHeaderSettings
         $current = self::get();
 
         $updated = [
-            'company_name'     => trim((string) ($data['company_name'] ?? $current['company_name'])),
-            'siege_social'     => trim((string) ($data['siege_social'] ?? $current['siege_social'])),
-            'telephone'        => trim((string) ($data['telephone'] ?? $current['telephone'])),
-            'email'            => trim((string) ($data['email'] ?? $current['email'])),
-            'site_web'         => trim((string) ($data['site_web'] ?? $current['site_web'])),
-            'matricule_fiscal' => trim((string) ($data['matricule_fiscal'] ?? $current['matricule_fiscal'])),
-            'show_header'      => isset($data['show_header']) ? (bool) $data['show_header'] : true,
-            'show_footer_logo' => isset($data['show_footer_logo']) ? (bool) $data['show_footer_logo'] : true,
-            'logo_path'        => $current['logo_path'] ?? null,
-            'footer_logo_path' => $current['footer_logo_path'] ?? null,
+            'company_name'            => trim((string) ($data['company_name'] ?? $current['company_name'])),
+            'siege_social'            => trim((string) ($data['siege_social'] ?? $current['siege_social'])),
+            'telephone'               => trim((string) ($data['telephone'] ?? $current['telephone'])),
+            'email'                   => trim((string) ($data['email'] ?? $current['email'])),
+            'site_web'                => trim((string) ($data['site_web'] ?? $current['site_web'])),
+            'matricule_fiscal'        => trim((string) ($data['matricule_fiscal'] ?? $current['matricule_fiscal'])),
+            'show_header'             => isset($data['show_header']) ? (bool) $data['show_header'] : ($current['show_header'] ?? true),
+            'show_footer'             => isset($data['show_footer']) ? (bool) $data['show_footer'] : ($current['show_footer'] ?? true),
+            'show_footer_logo'        => isset($data['show_footer_logo']) ? (bool) $data['show_footer_logo'] : ($current['show_footer_logo'] ?? true),
+            'footer_title'            => isset($data['footer_title']) ? trim((string) $data['footer_title']) : ($current['footer_title'] ?? $current['company_name']),
+            'footer_subtitle'         => isset($data['footer_subtitle']) ? trim((string) $data['footer_subtitle']) : ($current['footer_subtitle'] ?? "Cabinet International d'Audit, d'Expertise et d'Ingénierie de Formation"),
+            'footer_disclaimer'       => isset($data['footer_disclaimer']) ? trim((string) $data['footer_disclaimer']) : ($current['footer_disclaimer'] ?? "Vous recevez cette communication professionnelle car vous êtes inscrit dans le réseau de contacts CAEI."),
+            'footer_unsubscribe_text' => isset($data['footer_unsubscribe_text']) ? trim((string) $data['footer_unsubscribe_text']) : ($current['footer_unsubscribe_text'] ?? "Se désinscrire de cette liste"),
+            'footer_extra_text'       => isset($data['footer_extra_text']) ? trim((string) $data['footer_extra_text']) : ($current['footer_extra_text'] ?? null),
+            'logo_path'               => $current['logo_path'] ?? null,
+            'footer_logo_path'        => $current['footer_logo_path'] ?? null,
         ];
 
         // Traiter l'upload d'un nouveau logo en-tête
@@ -115,6 +127,36 @@ class EmailHeaderSettings
         $updated['footer_logo_url'] = self::resolveFooterLogoUrl($updated['footer_logo_path']);
 
         return $updated;
+    }
+
+    /**
+     * Réinitialise uniquement les paramètres du pied de page.
+     */
+    public static function resetFooter(): array
+    {
+        $current = self::get();
+        if (!empty($current['footer_logo_path']) && Storage::disk('public')->exists($current['footer_logo_path'])) {
+            Storage::disk('public')->delete($current['footer_logo_path']);
+        }
+
+        $defaults = self::defaults();
+        $current['show_footer'] = $defaults['show_footer'];
+        $current['show_footer_logo'] = $defaults['show_footer_logo'];
+        $current['footer_logo_path'] = null;
+        $current['footer_title'] = $defaults['footer_title'];
+        $current['footer_subtitle'] = $defaults['footer_subtitle'];
+        $current['footer_disclaimer'] = $defaults['footer_disclaimer'];
+        $current['footer_unsubscribe_text'] = $defaults['footer_unsubscribe_text'];
+        $current['footer_extra_text'] = null;
+
+        $dir = storage_path('app/settings');
+        if (!File::isDirectory($dir)) {
+            File::makeDirectory($dir, 0755, true);
+        }
+
+        File::put(storage_path('app/' . self::SETTINGS_FILE), json_encode($current, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        return self::get();
     }
 
     /**
