@@ -32,6 +32,17 @@
         </div>
     </div>
 
+    {{-- Bandeau catégorie cible (import dédié) --}}
+    @if(isset($targetCategory) && $targetCategory)
+        <div class="flex items-center gap-3 bg-indigo-50 border border-indigo-200 text-indigo-800 px-5 py-3.5 rounded-xl shadow-sm">
+            <svg class="w-5 h-5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            <span class="font-bold">Import terminé pour la liste :</span>
+            <span class="font-semibold">{{ $targetCategory->name }}</span>
+        </div>
+    @endif
+
     {{-- Stats finales --}}
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm text-center">
@@ -106,25 +117,40 @@
     @endif
 
     {{-- Actions --}}
-    <div class="flex items-center justify-between">
-        <div class="flex gap-3">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+            @if(isset($targetCategory) && $targetCategory)
+            <a href="{{ route('categories.show', $targetCategory) }}"
+               class="inline-flex items-center gap-2 px-5 py-2.5 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-sm font-semibold transition shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                Retour à la liste
+            </a>
+            @endif
             <a href="{{ route('contacts.import-history') }}"
                class="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm">
                 Historique des imports
             </a>
-            <a href="{{ route('contacts.import.upload') }}"
+            <a href="{{ isset($targetCategory) && $targetCategory ? route('categories.import', $targetCategory) : route('contacts.import.upload') }}"
                class="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm">
                 Nouvel import
             </a>
         </div>
 
-        @if($importLog->imported > 0)
-        <a href="{{ route('contacts.index', ['import_log_id' => $importLog->id]) }}"
-           class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-sm transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            Voir les {{ number_format($importLog->imported) }} contacts importés
-        </a>
-        @endif
+        <div class="flex items-center gap-3">
+            @if(isset($targetCategory) && $targetCategory)
+            <a href="{{ route('categories.show', $targetCategory) }}"
+               class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-sm transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                Voir la liste ({{ $targetCategory->name }})
+            </a>
+            @elseif($importLog->imported > 0)
+            <a href="{{ route('contacts.index', ['import_log_id' => $importLog->id]) }}"
+               class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-sm transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Voir les {{ number_format($importLog->imported) }} contacts importés
+            </a>
+            @endif
+        </div>
     </div>
 
 </div>

@@ -84,6 +84,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('categories', CategoryController::class);
     Route::post('categories/{category}/add-contacts', [CategoryController::class, 'addContacts'])->name('categories.addContacts');
     Route::delete('categories/{category}/remove-contact/{contact}', [CategoryController::class, 'removeContact'])->name('categories.removeContact');
+    // Import de contacts directement dans une liste dédiée
+    Route::get('categories/{category}/import', [App\Http\Controllers\ContactImportController::class, 'showUploadForCategory'])->name('categories.import');
 
     // Statistiques
     Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');

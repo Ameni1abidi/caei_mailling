@@ -31,7 +31,25 @@ class ContactImportController extends Controller
 
     public function showUpload(): View
     {
-        return view('contacts.import.step1-upload');
+        $targetCategory = null;
+        $categoryId = session('import_target_category_id');
+        if ($categoryId) {
+            $targetCategory = Category::find($categoryId);
+        }
+
+        return view('contacts.import.step1-upload', compact('targetCategory'));
+    }
+
+    // ─────────────────────────────────────────────
+    // Import dédié à une liste : initialise la session et redirige vers step1
+    // ─────────────────────────────────────────────
+
+    public function showUploadForCategory(Category $category): RedirectResponse
+    {
+        session(['import_target_category_id' => $category->id]);
+
+        return redirect()->route('contacts.import.upload')
+            ->with('info', "Import dédié à la liste : {$category->name}");
     }
 
     // ─────────────────────────────────────────────
@@ -83,15 +101,17 @@ class ContactImportController extends Controller
         }
 
         // Créer le log d'import (statut = pending)
+        $targetCategoryId = session('import_target_category_id');
         $importLog = ImportLog::create([
-            'filename'   => $file->getClientOriginalName(),
-            'temp_path'  => $storagePath,
-            'status'     => 'pending',
-            'user_id'    => Auth::id(),
-            'imported'   => 0,
-            'duplicates' => 0,
-            'errors'     => 0,
-            'total_rows' => $analysis['total_estimate'],
+            'filename'     => $file->getClientOriginalName(),
+            'temp_path'    => $storagePath,
+            'status'       => 'pending',
+            'user_id'      => Auth::id(),
+            'imported'     => 0,
+            'duplicates'   => 0,
+            'errors'       => 0,
+            'total_rows'   => $analysis['total_estimate'],
+            'category_ids' => $targetCategoryId ? [$targetCategoryId] : [],
         ]);
 
         // Stocker l'analyse en session
@@ -117,13 +137,20 @@ class ContactImportController extends Controller
                 ->with('error', 'Session expirée. Veuillez re-uploader le fichier.');
         }
 
-        $headers       = $analysis['headers'];
-        $autoMapping   = ContactColumnMapper::autoMap($headers);
+        $headers        = $analysis['headers'];
+        $autoMapping    = ContactColumnMapper::autoMap($headers);
         $mappableFields = ContactColumnMapper::getMappableFields();
-        $categories    = Category::orderBy('name')->get(['id', 'name']);
+        $categories     = Category::orderBy('name')->get(['id', 'name']);
+
+        // Catégorie cible pour l'import dédié
+        $targetCategory = null;
+        $targetCategoryId = session('import_target_category_id');
+        if ($targetCategoryId) {
+            $targetCategory = Category::find($targetCategoryId);
+        }
 
         return view('contacts.import.step2-mapping', compact(
-            'importLog', 'headers', 'autoMapping', 'mappableFields', 'categories'
+            'importLog', 'headers', 'autoMapping', 'mappableFields', 'categories', 'targetCategory'
         ));
     }
 
@@ -242,9 +269,16 @@ class ContactImportController extends Controller
         $allFields    = ContactColumnMapper::getMappableFields();
         $categories   = Category::whereIn('id', $importLog->category_ids ?? [])->get();
 
+        // Catégorie cible pour l'import dédié
+        $targetCategory = null;
+        $targetCategoryId = session('import_target_category_id');
+        if ($targetCategoryId) {
+            $targetCategory = Category::find($targetCategoryId);
+        }
+
         return view('contacts.import.step3-preview', compact(
             'importLog', 'previewMapped', 'mappedFields', 'allFields',
-            'validCount', 'errorCount', 'errorRows', 'categories'
+            'validCount', 'errorCount', 'errorRows', 'categories', 'targetCategory'
         ));
     }
 
@@ -268,7 +302,7 @@ class ContactImportController extends Controller
         ProcessContactImport::dispatch($importLog->id)
             ->onQueue('default');
 
-        // Nettoyer la session
+        // Nettoyer la session d'analyse (garder la catégorie cible pour progress/result)
         session()->forget(["import_{$importLogId}_analysis", "import_{$importLogId}_mapping"]);
 
         return redirect()->route('contacts.import.progress', $importLogId);
@@ -283,7 +317,13 @@ class ContactImportController extends Controller
         $importLog = ImportLog::findOrFail($importLogId);
         $this->authorizeImport($importLog);
 
-        return view('contacts.import.step4-progress', compact('importLog'));
+        $targetCategory = null;
+        $targetCategoryId = session('import_target_category_id');
+        if ($targetCategoryId) {
+            $targetCategory = Category::find($targetCategoryId);
+        }
+
+        return view('contacts.import.step4-progress', compact('importLog', 'targetCategory'));
     }
 
     // ─────────────────────────────────────────────
@@ -333,8 +373,18 @@ class ContactImportController extends Controller
         $errorDetails = $importLog->error_details ?? [];
         $categories   = Category::whereIn('id', $importLog->category_ids ?? [])->get();
 
+        // Récupérer la catégorie cible pour afficher le bouton de retour
+        $targetCategory = null;
+        $targetCategoryId = session('import_target_category_id');
+        if ($targetCategoryId) {
+            $targetCategory = Category::find($targetCategoryId);
+        }
+
+        // Nettoyer la session de catégorie cible après l'étape finale
+        session()->forget('import_target_category_id');
+
         return view('contacts.import.step5-result', compact(
-            'importLog', 'errorDetails', 'categories'
+            'importLog', 'errorDetails', 'categories', 'targetCategory'
         ));
     }
 

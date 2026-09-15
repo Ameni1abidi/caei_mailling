@@ -32,6 +32,17 @@
         </div>
     </div>
 
+    {{-- Bandeau catégorie cible (import dédié) --}}
+    @if(isset($targetCategory) && $targetCategory)
+        <div class="flex items-center gap-3 bg-indigo-50 border border-indigo-200 text-indigo-800 px-5 py-3.5 rounded-xl shadow-sm">
+            <svg class="w-5 h-5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            <span class="font-bold">Import dédié à :</span>
+            <span class="font-semibold">{{ $targetCategory->name }}</span>
+        </div>
+    @endif
+
     {{-- Barre de progression --}}
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-8">
         <div class="flex items-center justify-between mb-3">

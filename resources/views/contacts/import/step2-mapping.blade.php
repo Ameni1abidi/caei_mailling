@@ -132,18 +132,36 @@
 
             {{-- Associer à des listes --}}
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
-                <h3 class="font-bold text-slate-800 mb-3">Associer à des listes <span class="text-xs font-normal text-slate-400">(optionnel)</span></h3>
-                @if($categories->isEmpty())
-                    <p class="text-sm text-slate-400 italic">Aucune liste créée. <a href="{{ route('categories.create') }}" class="text-indigo-600 hover:underline">Créer une liste</a></p>
-                @else
-                    <div class="space-y-2 max-h-48 overflow-y-auto">
-                        @foreach($categories as $cat)
-                        <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer transition">
-                            <input type="checkbox" name="category_ids[]" value="{{ $cat->id }}" class="text-indigo-600 rounded">
-                            <span class="text-sm font-medium text-slate-700">{{ $cat->name }}</span>
-                        </label>
-                        @endforeach
+                @if(isset($targetCategory) && $targetCategory)
+                    {{-- Mode import dédié : liste verrouillée --}}
+                    <h3 class="font-bold text-slate-800 mb-1">Liste de destination</h3>
+                    <div class="flex items-center gap-3 mt-2 p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+                        <svg class="w-5 h-5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                        <div>
+                            <div class="font-semibold text-indigo-800 text-sm">{{ $targetCategory->name }}</div>
+                            <div class="text-xs text-indigo-600">Assigné automatiquement — Import dédié</div>
+                        </div>
+                        <input type="hidden" name="category_ids[]" value="{{ $targetCategory->id }}">
                     </div>
+                @else
+                    {{-- Mode import normal : choix libre --}}
+                    <h3 class="font-bold text-slate-800 mb-3">Associer à des listes <span class="text-xs font-normal text-slate-400">(optionnel)</span></h3>
+                    @if($categories->isEmpty())
+                        <p class="text-sm text-slate-400 italic">Aucune liste créée. <a href="{{ route('categories.create') }}" class="text-indigo-600 hover:underline">Créer une liste</a></p>
+                    @else
+                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                            @foreach($categories as $cat)
+                            <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer transition">
+                                <input type="checkbox" name="category_ids[]" value="{{ $cat->id }}"
+                                    {{ in_array($cat->id, $importLog->category_ids ?? []) ? 'checked' : '' }}
+                                    class="text-indigo-600 rounded">
+                                <span class="text-sm font-medium text-slate-700">{{ $cat->name }}</span>
+                            </label>
+                            @endforeach
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>
