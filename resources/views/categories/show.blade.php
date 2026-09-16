@@ -79,7 +79,7 @@
                         </svg>
                         Importer des contacts
                     </a>
-                    <a href="{{ route('categories.export', $category) }}"
+                    <a href="{{ \Illuminate\Support\Facades\Route::has('categories.export') ? route('categories.export', $category) : url('categories/' . $category->id . '/export') }}"
                        class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-sm"
                        title="Exporter tous les contacts de cette liste au format CSV">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
