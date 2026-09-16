@@ -107,13 +107,17 @@ class SendCampaignEmailJob implements ShouldQueue
 
         } catch (\Throwable $e) {
             $status = $this->determineFailureStatus($e);
+            $errMsg = trim($e->getMessage());
+            if (empty($errMsg)) {
+                $errMsg = 'Erreur SMTP : Délai d\'attente réseau dépassé ou rejet du serveur de messagerie';
+            }
 
             EmailLog::where('id', $this->emailLogId)->update([
                 'status'        => $status,
-                'error_message' => substr($e->getMessage(), 0, 500),
+                'error_message' => substr($errMsg, 0, 500),
             ]);
 
-            Log::error("Échec envoi campagne #{$this->campaign->id} à {$this->contact->email} : " . $e->getMessage());
+            Log::error("Échec envoi campagne #{$this->campaign->id} à {$this->contact->email} : " . $errMsg);
 
             $campaign->markAsSentIfAllEmailsAreSent();
             throw $e;
@@ -122,9 +126,17 @@ class SendCampaignEmailJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
+        $errMsg = trim($exception->getMessage());
+        if (empty($errMsg)) {
+            $errMsg = 'Échec du Queue Worker : Tentatives épuisées ou rejet de connexion SMTP';
+        }
+
         EmailLog::where('id', $this->emailLogId)
-            ->where('status', EmailLog::STATUS_PENDING)
-            ->update(['status' => EmailLog::STATUS_FAILED]);
+            ->whereIn('status', [EmailLog::STATUS_PENDING, EmailLog::STATUS_FAILED])
+            ->update([
+                'status'        => EmailLog::STATUS_FAILED,
+                'error_message' => substr($errMsg, 0, 500),
+            ]);
     }
 
     /**
