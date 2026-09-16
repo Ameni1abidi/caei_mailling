@@ -41,6 +41,8 @@
             <span class="font-bold">Import terminé pour la liste :</span>
             <span class="font-semibold">{{ $targetCategory->name }}</span>
         </div>
+    @endif
+
     {{-- Alerte d'échec d'import --}}
     @if($importLog->status === 'failed')
         <div class="bg-rose-50 border-2 border-rose-300 text-rose-900 p-5 rounded-2xl shadow-sm">

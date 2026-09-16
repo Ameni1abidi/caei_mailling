@@ -36,6 +36,8 @@
             <span class="font-bold">Import dédié à :</span>
             <span class="font-semibold">{{ $targetCategory->name }}</span>
         </div>
+    @endif
+
     {{-- Erreurs de validation et messages de session --}}
     @if(session('error') || $errors->any())
         <div class="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-sm font-medium">
