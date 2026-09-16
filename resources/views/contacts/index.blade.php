@@ -287,36 +287,20 @@
                         <tbody class="divide-y divide-slate-100">
                             @forelse($contacts as $contact)
                                 @php
-                                    $prenom = trim($contact->prenom ?? '');
-                                    $nom    = trim($contact->nom ?? '');
+                                    $prenom     = trim($contact->prenom ?? '');
+                                    $nom        = trim($contact->nom ?? '');
                                     $entreprise = trim($contact->entreprise ?? '');
-                                    $email  = trim($contact->email ?? '');
+                                    $email      = trim($contact->email ?? '');
+                                    $hasName    = ($prenom !== '' || $nom !== '');
 
-                                    if ($prenom !== '' || $nom !== '') {
+                                    if ($hasName) {
                                         $firstP = $prenom !== '' ? mb_substr($prenom, 0, 1) : '';
                                         $firstN = $nom !== '' ? mb_substr($nom, 0, 1) : mb_substr($prenom, 1, 1);
                                         $initials = strtoupper($firstP . $firstN);
-                                    } elseif ($entreprise !== '') {
-                                        $initials = strtoupper(mb_substr($entreprise, 0, 2));
-                                    } elseif ($email !== '') {
-                                        $initials = strtoupper(mb_substr(explode('@', $email)[0], 0, 2));
+                                        $displayName = trim($prenom . ' ' . $nom);
                                     } else {
-                                        $initials = 'CT';
-                                    }
-
-                                    $hashKey = $email !== '' ? $email : (string) $contact->id;
-                                    $bgGradients = [
-                                        'bg-gradient-to-br from-[#03123F] to-[#1E3A8A] text-white',
-                                        'bg-gradient-to-br from-[#D9822B] to-[#C57A1E] text-white',
-                                        'bg-gradient-to-br from-emerald-600 to-teal-700 text-white',
-                                        'bg-gradient-to-br from-purple-600 to-indigo-700 text-white',
-                                        'bg-gradient-to-br from-sky-600 to-blue-700 text-white',
-                                    ];
-                                    $bgGradient = $bgGradients[abs(crc32($hashKey)) % count($bgGradients)];
-
-                                    $displayName = trim($prenom . ' ' . $nom);
-                                    if ($displayName === '') {
-                                        $displayName = $entreprise !== '' ? $entreprise : ($email !== '' ? $email : 'Contact #' . $contact->id);
+                                        $initials = null;
+                                        $displayName = $email !== '' ? $email : ($entreprise !== '' ? $entreprise : 'Contact #' . $contact->id);
                                     }
 
                                     $stMeta = $statusOptions[$contact->prospect_status] ?? [
@@ -329,14 +313,24 @@
                                     <!-- Contact Name & Avatar -->
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded-full {{ $bgGradient }} font-black text-xs flex items-center justify-center shadow-sm shrink-0 border border-slate-200/50">
-                                                {{ $initials }}
-                                            </div>
-                                            <div>
-                                                <div class="font-bold text-slate-900 group-hover:text-[#C57A1E] transition">
+                                            @if($hasName)
+                                                <div class="w-10 h-10 rounded-full bg-[#03123F] text-white font-extrabold text-xs flex items-center justify-center shadow-sm shrink-0 border border-slate-200">
+                                                    {{ $initials }}
+                                                </div>
+                                            @else
+                                                <div class="w-10 h-10 rounded-full bg-amber-50 text-[#C57A1E] border border-amber-200 font-bold text-xs flex items-center justify-center shadow-sm shrink-0">
+                                                    <svg class="w-5 h-5 text-[#C57A1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                                    </svg>
+                                                </div>
+                                            @endif
+                                            <div class="min-w-0">
+                                                <div class="font-bold text-slate-900 group-hover:text-[#C57A1E] transition truncate max-w-xs" title="{{ $displayName }}">
                                                     {{ $displayName }}
                                                 </div>
-                                                @if($contact->source)
+                                                @if($hasName && $email)
+                                                    <div class="text-xs text-slate-500 font-medium truncate max-w-xs mt-0.5">{{ $email }}</div>
+                                                @elseif($contact->source)
                                                     <div class="text-[11px] text-slate-400 mt-0.5">Source : {{ $contact->source }}</div>
                                                 @endif
                                             </div>
@@ -349,13 +343,13 @@
                                             <div class="font-bold text-slate-800">{{ $contact->entreprise ?: '-' }}</div>
                                             <div class="text-xs text-slate-500 font-medium mt-0.5">{{ $contact->fonction ?: ($contact->secteur_activite ?: '') }}</div>
                                         @else
-                                            <span class="text-slate-400 italic text-xs">-</span>
+                                            <span class="text-slate-300 font-normal">&mdash;</span>
                                         @endif
                                     </td>
 
                                     <!-- Statut Prospect -->
                                     <td class="px-6 py-4">
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border {{ $stMeta['badge'] }}">
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border {{ $stMeta['badge'] }} whitespace-nowrap">
                                             <span class="w-1.5 h-1.5 rounded-full {{ $stMeta['dot'] }}"></span>
                                             {{ $stMeta['label'] }}
                                         </span>
@@ -363,14 +357,17 @@
 
                                     <!-- Coordonnées -->
                                     <td class="px-6 py-4 space-y-1">
-                                        <div class="flex items-center gap-1.5 text-slate-700">
-                                            <svg class="w-3.5 h-3.5 text-[#C57A1E] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                            </svg>
-                                            <a href="mailto:{{ $contact->email }}" class="hover:text-[#C57A1E] font-medium truncate max-w-[200px]" title="{{ $contact->email }}">
-                                                {{ $contact->email }}
-                                            </a>
-                                        </div>
+                                        @if($hasName && $email)
+                                            <div class="flex items-center gap-1.5 text-slate-700">
+                                                <svg class="w-3.5 h-3.5 text-[#C57A1E] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                                </svg>
+                                                <a href="mailto:{{ $email }}" class="hover:text-[#C57A1E] font-medium truncate max-w-[200px]" title="{{ $email }}">
+                                                    {{ $email }}
+                                                </a>
+                                            </div>
+                                        @endif
+
                                         @if($contact->whatsapp || $contact->telephone)
                                             <div class="flex items-center gap-2 text-xs text-slate-500">
                                                 @if($contact->whatsapp)
@@ -382,9 +379,11 @@
                                                         {{ $contact->whatsapp }}
                                                     </a>
                                                 @elseif($contact->telephone)
-                                                    <span class="font-medium">{{ $contact->telephone }}</span>
+                                                    <span class="font-medium text-slate-700">{{ $contact->telephone }}</span>
                                                 @endif
                                             </div>
+                                        @elseif(!$hasName)
+                                            <span class="text-slate-300 font-normal">&mdash;</span>
                                         @endif
                                     </td>
 
