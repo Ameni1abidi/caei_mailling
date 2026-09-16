@@ -164,7 +164,7 @@
             {{-- ── Per-campaign table ──────────────────────────────── --}}
             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div class="p-6 border-b border-slate-100">
-                    <h3 class="text-base font-bold text-slate-800">Détail par campagne</h3>
+                    <h3 class="text-base font-bold text-[#03123F]">Statistiques Détaillées par Campagne</h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -172,12 +172,14 @@
                             <tr>
                                 <th class="px-6 py-3 text-left">Campagne</th>
                                 <th class="px-4 py-3 text-center">Statut</th>
+                                <th class="px-4 py-3 text-center">Total Contacts</th>
                                 <th class="px-4 py-3 text-center">Envoyés</th>
                                 <th class="px-4 py-3 text-center">Ouverts</th>
                                 <th class="px-4 py-3 text-center">Clics</th>
                                 <th class="px-4 py-3 text-center">Rebonds</th>
                                 <th class="px-4 py-3 text-center">Échecs</th>
                                 <th class="px-4 py-3 text-center">Tx. ouverture</th>
+                                <th class="px-4 py-3 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
@@ -194,7 +196,7 @@
                                 @endphp
                                 <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="px-6 py-4">
-                                        <div class="font-semibold text-slate-800">{{ $c->nom }}</div>
+                                        <div class="font-bold text-slate-800">{{ $c->nom }}</div>
                                         <div class="text-xs text-slate-400">{{ $c->created_at->format('d/m/Y') }}</div>
                                     </td>
                                     <td class="px-4 py-4 text-center">
@@ -202,6 +204,7 @@
                                             {{ $badge['label'] }}
                                         </span>
                                     </td>
+                                    <td class="px-4 py-4 text-center font-extrabold text-slate-800">{{ number_format($c->total_count) }}</td>
                                     <td class="px-4 py-4 text-center font-bold text-slate-700">{{ number_format($c->sent_count) }}</td>
                                     <td class="px-4 py-4 text-center font-bold text-sky-600">{{ number_format($c->opened_count) }}</td>
                                     <td class="px-4 py-4 text-center font-bold text-purple-600">{{ number_format($c->clicked_count) }}</td>
@@ -215,10 +218,16 @@
                                             <span class="font-bold text-slate-700 text-xs">{{ $openPct }}%</span>
                                         </div>
                                     </td>
+                                    <td class="px-4 py-4 text-right">
+                                        <a href="{{ route('statistics.index', ['campaign_id' => $c->id]) }}"
+                                           class="inline-flex items-center gap-1 px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition">
+                                            <span>Filtrer</span>
+                                        </a>
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-6 py-12 text-center text-slate-400">
+                                    <td colspan="10" class="px-6 py-12 text-center text-slate-400">
                                         Aucune campagne trouvée pour cette période.
                                     </td>
                                 </tr>

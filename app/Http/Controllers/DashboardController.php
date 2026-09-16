@@ -228,7 +228,10 @@ class DashboardController extends Controller
             $campaignsWithStats = Campaign::forUser($user)
                 ->with('creator')
                 ->withCount([
-                    'emailLogs as envoyes_count',
+                    'emailLogs as total_targets_count',
+                    'emailLogs as envoyes_count' => function ($query) {
+                        $query->whereIn('status', [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED]);
+                    },
                     'emailLogs as delivered_count' => function ($query) {
                         $query->where('status', EmailLog::STATUS_DELIVERED);
                     },
@@ -251,7 +254,7 @@ class DashboardController extends Controller
                             EmailLog::STATUS_INVALID,
                         ]);
                     }
-                ])->latest()->take(6)->get();
+                ])->latest()->take(10)->get();
         } catch (\Throwable $e) {
             $campaignsWithStats = collect();
         }
