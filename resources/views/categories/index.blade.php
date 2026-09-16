@@ -108,7 +108,7 @@
                                     </svg>
                                     Voir
                                 </a>
-                                <a href="{{ \Illuminate\Support\Facades\Route::has('categories.export') ? route('categories.export', $category) : url('categories/' . $category->id . '/export') }}"
+                                <a href="{{ route('categories.export', $category) }}"
                                    class="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-teal-700 hover:text-teal-900 hover:bg-teal-50 py-2 px-2 rounded-lg transition-colors border border-teal-100"
                                    title="Exporter cette liste en CSV">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -140,7 +140,7 @@ class CategoryController extends Controller
         return redirect()->route('categories.show', $category)->with('success', 'Contact retiré de la liste.');
     }
 
-    public function export(Category $category)
+    public function export(Request $request, Category $category)
     {
         $slug = \Illuminate\Support\Str::slug($category->name);
         $fileName = "contacts_liste_{$slug}_" . date('Y-m-d_H-i') . ".csv";
@@ -153,7 +153,40 @@ class CategoryController extends Controller
             "Expires"             => "0"
         ];
 
-        $contacts = $category->contacts()->get();
+        $query = $category->contacts();
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('contacts.nom', 'like', "%{$search}%")
+                  ->orWhere('contacts.prenom', 'like', "%{$search}%")
+                  ->orWhere('contacts.email', 'like', "%{$search}%")
+                  ->orWhere('contacts.entreprise', 'like', "%{$search}%");
+            });
+        }
+
+        // Filters
+        if ($request->filled('pays')) {
+            $query->where('contacts.pays', $request->pays);
+        }
+        if ($request->filled('entreprise')) {
+            $query->where('contacts.entreprise', $request->entreprise);
+        }
+        if ($request->filled('fonction')) {
+            $query->where('contacts.fonction', $request->fonction);
+        }
+        if ($request->filled('secteur_activite')) {
+            $query->where('contacts.secteur_activite', $request->secteur_activite);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('contacts.created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('contacts.created_at', '<=', $request->date_to);
+        }
+
+        $contacts = $query->latest('contacts.created_at')->get();
 
         $callback = function() use ($contacts) {
             $file = fopen('php://output', 'w');
