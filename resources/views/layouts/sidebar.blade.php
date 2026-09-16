@@ -78,7 +78,7 @@
     }
 @endphp
 
-<aside {{ ($attributes ?? new \Illuminate\View\ComponentAttributeBag)->merge(['class' => 'flex h-full w-72 flex-col bg-[#101d2f] text-slate-200 shadow-xl shadow-slate-950/20']) }}>
+<aside {{ ($attributes ?? new \Illuminate\View\ComponentAttributeBag)->merge(['class' => 'flex h-full w-72 flex-col bg-[#020B28] border-r border-[#1E3A8A]/50 text-slate-200 shadow-2xl']) }}>
     <div class="flex h-20 items-center gap-3 px-6">
         <img src="{{ asset('images/logo-caei.jpg') }}" alt="CAEI Logo" class="h-11 w-11 rounded-full object-cover bg-white ring-2 ring-amber-500/50 p-0.5 shadow-md shrink-0">
         <div class="min-w-0">
