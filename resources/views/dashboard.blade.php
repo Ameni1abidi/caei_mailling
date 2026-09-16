@@ -198,15 +198,21 @@
                 </div>
             </div>
 
-            {{-- ── Campagnes Récentes ────────────────────────────────────────────── --}}
+            {{-- ── Statistiques Détaillées par Campagne ────────────────────────────────────────── --}}
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                <div class="p-6 flex items-center justify-between border-b border-slate-100">
+                <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100">
                     <div>
-                        <h3 class="text-lg font-bold text-slate-900 tracking-wide">Campagnes récentes</h3>
-                        <p class="text-xs text-slate-500 mt-0.5">Aperçu rapide des dernières campagnes de mailing créées</p>
+                        <h3 class="text-lg font-bold text-[#03123F] tracking-wide flex items-center gap-2">
+                            <svg class="w-5 h-5 text-[#C57A1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            Statistiques par Campagne
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Performance globale : total ciblés, envois réels, ouvertures, clics et taux de succès</p>
                     </div>
-                    <a href="{{ route('campaigns.index') }}" class="text-xs font-bold text-[#C57A1E] hover:text-amber-700 transition">
-                        Toutes les campagnes &rarr;
+                    <a href="{{ route('statistics.index') }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#C57A1E] bg-amber-50 hover:bg-amber-100/80 border border-amber-200 rounded-xl transition">
+                        <span>Voir toutes les statistiques &rarr;</span>
                     </a>
                 </div>
 
@@ -214,46 +220,66 @@
                     <table class="w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50/80 text-[11px] uppercase font-bold text-slate-500 border-b border-slate-200/80 tracking-wider">
                             <tr>
-                                <th class="px-6 py-3.5">Campagne</th>
-                                <th class="px-6 py-3.5">Statut</th>
-                                <th class="px-6 py-3.5 text-center">Destinataires</th>
-                                <th class="px-6 py-3.5 text-center">Ouverts</th>
-                                <th class="px-6 py-3.5 text-center">Échecs</th>
-                                <th class="px-6 py-3.5 text-right">Date</th>
+                                <th class="px-5 py-3.5">Campagne</th>
+                                <th class="px-4 py-3.5 text-center">Statut</th>
+                                <th class="px-4 py-3.5 text-center">Total Contacts</th>
+                                <th class="px-4 py-3.5 text-center">Emails Envoyés</th>
+                                <th class="px-4 py-3.5 text-center">Ouverts</th>
+                                <th class="px-4 py-3.5 text-center">Clics</th>
+                                <th class="px-4 py-3.5 text-center">Échecs</th>
+                                <th class="px-4 py-3.5 text-center">Taux Ouverture</th>
+                                <th class="px-5 py-3.5 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @forelse($campaignsWithStats as $camp)
+                                @php
+                                    $openRate = $camp->envoyes_count > 0 ? round(($camp->ouverts_count / $camp->envoyes_count) * 100, 1) : 0;
+                                @endphp
                                 <tr class="hover:bg-slate-50/80 transition group">
-                                    <td class="px-6 py-4">
+                                    <td class="px-5 py-4">
                                         <div class="font-bold text-slate-900 group-hover:text-[#C57A1E] transition">{{ $camp->nom }}</div>
-                                        <div class="text-xs text-slate-500 mt-0.5">Par : {{ $camp->creator?->name ?? 'Admin' }}</div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5">Par : {{ $camp->creator?->name ?? 'Admin' }} &bull; {{ $camp->created_at ? $camp->created_at->format('d/m/Y') : '-' }}</div>
                                     </td>
-                                    <td class="px-6 py-4">
+                                    <td class="px-4 py-4 text-center">
                                         @if($camp->statut === 'envoyee')
-                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Envoyée
                                             </span>
                                         @elseif($camp->statut === 'en_cours')
-                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> En cours
                                             </span>
                                         @else
-                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                                                 {{ ucfirst($camp->statut) }}
                                             </span>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 text-center font-bold text-slate-900">{{ number_format($camp->envoyes_count) }}</td>
-                                    <td class="px-6 py-4 text-center font-bold text-emerald-600">{{ number_format($camp->ouverts_count) }}</td>
-                                    <td class="px-6 py-4 text-center font-bold text-rose-600">{{ number_format($camp->erreurs_count) }}</td>
-                                    <td class="px-6 py-4 text-right text-xs text-slate-500 font-medium">
-                                        {{ $camp->created_at ? $camp->created_at->format('d M. Y') : '-' }}
+                                    <td class="px-4 py-4 text-center font-extrabold text-slate-900">{{ number_format($camp->total_targets_count) }}</td>
+                                    <td class="px-4 py-4 text-center font-bold text-blue-700">{{ number_format($camp->envoyes_count) }}</td>
+                                    <td class="px-4 py-4 text-center font-bold text-emerald-600">{{ number_format($camp->ouverts_count) }}</td>
+                                    <td class="px-4 py-4 text-center font-bold text-purple-600">{{ number_format($camp->clics_count) }}</td>
+                                    <td class="px-4 py-4 text-center font-bold text-rose-600">{{ number_format($camp->erreurs_count) }}</td>
+                                    <td class="px-4 py-4 text-center">
+                                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-extrabold text-xs">
+                                            {{ $openRate }}%
+                                        </div>
+                                    </td>
+                                    <td class="px-5 py-4 text-right">
+                                        <a href="{{ route('statistics.index', ['campaign_id' => $camp->id]) }}"
+                                           title="Voir détails statistiques de cette campagne"
+                                           class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition shadow-sm">
+                                            <span>Stats</span>
+                                            <svg class="w-3.5 h-3.5 text-[#C57A1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                            </svg>
+                                        </a>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-10 text-center text-slate-500">
+                                    <td colspan="9" class="px-6 py-10 text-center text-slate-500">
                                         Aucune campagne trouvée. Cliquez sur « + Nouvelle campagne » pour démarrer.
                                     </td>
                                 </tr>
