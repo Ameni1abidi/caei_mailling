@@ -172,4 +172,65 @@ class CategoryTest extends TestCase
         $editResponse->assertStatus(200);
         $editResponse->assertSee('Banques UEMOA');
     }
+
+    public function test_can_export_category_contacts(): void
+    {
+        $category = Category::create(['name' => 'VIPs']);
+        $contact1 = Contact::create([
+            'nom' => 'Ben Ali',
+            'prenom' => 'Sami',
+            'email' => 'sami.benali@example.com',
+            'entreprise' => 'TechCorp',
+            'pays' => 'Tunisie',
+        ]);
+        $contact2 = Contact::create([
+            'nom' => 'Gomez',
+            'prenom' => 'Maria',
+            'email' => 'maria.gomez@example.com',
+            'entreprise' => 'Innovate',
+            'pays' => 'France',
+        ]);
+
+        $category->contacts()->attach([$contact1->id, $contact2->id]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('categories.export', $category));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('sami.benali@example.com', $content);
+        $this->assertStringContainsString('maria.gomez@example.com', $content);
+    }
+
+    public function test_can_export_category_contacts_with_filters(): void
+    {
+        $category = Category::create(['name' => 'Clients']);
+        $contact1 = Contact::create([
+            'nom' => 'Kassé',
+            'prenom' => 'Ousmane',
+            'email' => 'ousmane.kasse@example.com',
+            'entreprise' => 'Sahel Ltd',
+            'pays' => 'Sénégal',
+        ]);
+        $contact2 = Contact::create([
+            'nom' => 'Traoré',
+            'prenom' => 'Aïcha',
+            'email' => 'aicha.traore@example.com',
+            'entreprise' => 'Mali Agro',
+            'pays' => 'Mali',
+        ]);
+
+        $category->contacts()->attach([$contact1->id, $contact2->id]);
+
+        // Export with country filter = Sénégal
+        $response = $this->actingAs($this->user)
+            ->get(route('categories.export', [$category, 'pays' => 'Sénégal']));
+
+        $response->assertStatus(200);
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('ousmane.kasse@example.com', $content);
+        $this->assertStringNotContainsString('aicha.traore@example.com', $content);
+    }
 }
