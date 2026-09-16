@@ -347,60 +347,153 @@
 
             {{-- ── Pipeline Prospects (Module 9 - Admin) ────────────────────────── --}}
             @if(Auth::user()?->hasRole('admin'))
-                <div class="bg-[#0A1C50] rounded-2xl p-6 border border-[#1E3A8A]/60 shadow-2xl">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-[#C57A1E]/15 border border-[#C57A1E]/40 text-[#D9822B] rounded-xl">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z"/>
+                <div class="bg-[#0A1C50] rounded-2xl p-6 border border-[#1E3A8A]/70 shadow-2xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-[#C57A1E]/5 rounded-bl-full pointer-events-none"></div>
+
+                    <!-- Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#1E3A8A]/60">
+                        <div class="flex items-center gap-3.5">
+                            <div class="p-2.5 bg-gradient-to-br from-[#D9822B] to-[#B86D18] text-slate-950 rounded-xl shadow-lg shadow-amber-950/30">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z"/>
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-lg font-bold text-white tracking-wide">Pipeline Prospects</h3>
-                                <p class="text-xs text-slate-300/80">Cycle de qualification des prospects après campagnes</p>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#C57A1E]/20 text-amber-300 border border-[#C57A1E]/40">
+                                        PIPELINE CRM &bull; MODULE 9
+                                    </span>
+                                    <span class="text-xs font-bold text-slate-400">
+                                        {{ number_format($prospectStats['total']) }} prospects au total
+                                    </span>
+                                </div>
+                                <h3 class="text-xl font-bold text-white tracking-wide mt-1">Pipeline de Qualification des Prospects</h3>
                             </div>
                         </div>
-                        <a href="{{ route('prospects.index') }}" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-950 bg-gradient-to-r from-[#D9822B] to-[#C57A1E] hover:from-[#E58E26] hover:to-[#C57A1E] rounded-xl transition shadow-md">
-                            Ouvrir le Pipeline &rarr;
+
+                        <a href="{{ route('prospects.index') }}"
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-slate-950 bg-gradient-to-r from-[#D9822B] via-[#C57A1E] to-[#B86D18] hover:from-[#E58E26] hover:to-[#C57A1E] rounded-xl transition-all duration-200 shadow-lg shadow-amber-950/40 transform hover:-translate-y-0.5 self-start sm:self-auto">
+                            <span>Ouvrir le Pipeline Kanban</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                            </svg>
                         </a>
                     </div>
 
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                        <div class="p-3.5 rounded-xl bg-[#081748] border border-[#1E3A8A]/50">
-                            <div class="text-[11px] font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-slate-300"></span> Nouveau
+                    <!-- Funnel Stepper Cards Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5 relative">
+                        @php
+                            $nouveauCnt = $prospectStats['nouveau'] ?? 0;
+                            $envoyeCnt  = $prospectStats['envoye'] ?? 0;
+                            $ouvertCnt  = $prospectStats['ouvert'] ?? 0;
+                            $interesseCnt = $prospectStats['interesse'] ?? 0;
+                            $relancerCnt  = $prospectStats['relancer'] ?? 0;
+                            $clientCnt    = $prospectStats['client'] ?? 0;
+
+                            $pctEnvoye = $nouveauCnt > 0 ? round(($envoyeCnt / $nouveauCnt) * 100, 1) : 0;
+                            $pctOuvert = $envoyeCnt > 0 ? round(($ouvertCnt / $envoyeCnt) * 100, 1) : 0;
+                        @endphp
+
+                        <!-- Etape 1: Nouveau -->
+                        <div class="bg-[#081748] rounded-xl p-4 border border-slate-700/60 hover:border-slate-400/50 transition-all duration-200 relative overflow-hidden group">
+                            <div class="h-1.5 w-full bg-slate-400 absolute top-0 left-0"></div>
+                            <div class="flex items-center justify-between mb-2 pt-1">
+                                <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                                    Nouveau
+                                </span>
+                                <span class="text-[10px] font-semibold text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">Étape 1</span>
                             </div>
-                            <div class="text-xl font-black text-white">{{ $prospectStats['nouveau'] ?? 0 }}</div>
+                            <div class="text-2xl font-black text-white group-hover:text-slate-200 transition">
+                                {{ number_format($nouveauCnt) }}
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-1 font-medium">Base brute reçue</div>
                         </div>
-                        <div class="p-3.5 rounded-xl bg-[#081748] border border-[#1E3A8A]/50">
-                            <div class="text-[11px] font-bold text-blue-400 mb-1 flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-blue-400"></span> Envoyé
+
+                        <!-- Etape 2: Envoyé -->
+                        <div class="bg-[#081748] rounded-xl p-4 border border-blue-500/30 hover:border-blue-400/60 transition-all duration-200 relative overflow-hidden group">
+                            <div class="h-1.5 w-full bg-blue-500 absolute top-0 left-0"></div>
+                            <div class="flex items-center justify-between mb-2 pt-1">
+                                <span class="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                                    Envoyé
+                                </span>
+                                <span class="text-[10px] font-semibold text-blue-300 bg-blue-950 px-1.5 py-0.5 rounded border border-blue-800/50">Étape 2</span>
                             </div>
-                            <div class="text-xl font-black text-white">{{ $prospectStats['envoye'] ?? 0 }}</div>
+                            <div class="text-2xl font-black text-white group-hover:text-blue-300 transition">
+                                {{ number_format($envoyeCnt) }}
+                            </div>
+                            <div class="text-[11px] text-blue-300/80 mt-1 font-medium">
+                                {{ $pctEnvoye }}% de la base
+                            </div>
                         </div>
-                        <div class="p-3.5 rounded-xl bg-[#081748] border border-[#1E3A8A]/50">
-                            <div class="text-[11px] font-bold text-purple-400 mb-1 flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-purple-400"></span> Ouvert
+
+                        <!-- Etape 3: Ouvert -->
+                        <div class="bg-[#081748] rounded-xl p-4 border border-purple-500/30 hover:border-purple-400/60 transition-all duration-200 relative overflow-hidden group">
+                            <div class="h-1.5 w-full bg-purple-500 absolute top-0 left-0"></div>
+                            <div class="flex items-center justify-between mb-2 pt-1">
+                                <span class="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                                    Ouvert
+                                </span>
+                                <span class="text-[10px] font-semibold text-purple-300 bg-purple-950 px-1.5 py-0.5 rounded border border-purple-800/50">Étape 3</span>
                             </div>
-                            <div class="text-xl font-black text-white">{{ $prospectStats['ouvert'] ?? 0 }}</div>
+                            <div class="text-2xl font-black text-white group-hover:text-purple-300 transition">
+                                {{ number_format($ouvertCnt) }}
+                            </div>
+                            <div class="text-[11px] text-purple-300/80 mt-1 font-medium">
+                                {{ $pctOuvert }}% d'ouverture
+                            </div>
                         </div>
-                        <div class="p-3.5 rounded-xl bg-[#081748] border border-[#1E3A8A]/50">
-                            <div class="text-[11px] font-bold text-amber-400 mb-1 flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-amber-400"></span> Intéressé
+
+                        <!-- Etape 4: Intéressé -->
+                        <div class="bg-[#081748] rounded-xl p-4 border border-[#C57A1E]/40 hover:border-[#C57A1E]/80 transition-all duration-200 relative overflow-hidden group">
+                            <div class="h-1.5 w-full bg-gradient-to-r from-[#D9822B] to-[#C57A1E] absolute top-0 left-0"></div>
+                            <div class="flex items-center justify-between mb-2 pt-1">
+                                <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                                    Intéressé
+                                </span>
+                                <span class="text-[10px] font-semibold text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/50">Hot Lead</span>
                             </div>
-                            <div class="text-xl font-black text-white">{{ $prospectStats['interesse'] ?? 0 }}</div>
+                            <div class="text-2xl font-black text-amber-400 group-hover:text-amber-300 transition">
+                                {{ number_format($interesseCnt) }}
+                            </div>
+                            <div class="text-[11px] text-amber-300/80 mt-1 font-medium">Signaux forts</div>
                         </div>
-                        <div class="p-3.5 rounded-xl bg-[#081748] border border-[#1E3A8A]/50">
-                            <div class="text-[11px] font-bold text-rose-400 mb-1 flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-rose-400"></span> À relancer
+
+                        <!-- Etape 5: À relancer -->
+                        <div class="bg-[#081748] rounded-xl p-4 border border-rose-500/30 hover:border-rose-400/60 transition-all duration-200 relative overflow-hidden group">
+                            <div class="h-1.5 w-full bg-rose-500 absolute top-0 left-0"></div>
+                            <div class="flex items-center justify-between mb-2 pt-1">
+                                <span class="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                                    À relancer
+                                </span>
+                                <span class="text-[10px] font-semibold text-rose-300 bg-rose-950 px-1.5 py-0.5 rounded border border-rose-800/50">Priorité</span>
                             </div>
-                            <div class="text-xl font-black text-white">{{ $prospectStats['relancer'] ?? 0 }}</div>
+                            <div class="text-2xl font-black text-white group-hover:text-rose-300 transition">
+                                {{ number_format($relancerCnt) }}
+                            </div>
+                            <div class="text-[11px] text-rose-300/80 mt-1 font-medium">Relance commerciale</div>
                         </div>
-                        <div class="p-3.5 rounded-xl bg-[#081748] border border-[#1E3A8A]/50">
-                            <div class="text-[11px] font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Client
+
+                        <!-- Etape 6: Client -->
+                        <div class="bg-[#081748] rounded-xl p-4 border border-emerald-500/40 hover:border-emerald-400/80 transition-all duration-200 relative overflow-hidden group">
+                            <div class="h-1.5 w-full bg-emerald-500 absolute top-0 left-0"></div>
+                            <div class="flex items-center justify-between mb-2 pt-1">
+                                <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Client
+                                </span>
+                                <span class="text-[10px] font-semibold text-emerald-300 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800/50">Converti</span>
                             </div>
-                            <div class="text-xl font-black text-white">{{ $prospectStats['client'] ?? 0 }}</div>
+                            <div class="text-2xl font-black text-emerald-400 group-hover:text-emerald-300 transition">
+                                {{ number_format($clientCnt) }}
+                            </div>
+                            <div class="text-[11px] text-emerald-300/80 mt-1 font-medium">Contrats signés</div>
                         </div>
                     </div>
                 </div>
