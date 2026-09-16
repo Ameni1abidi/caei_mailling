@@ -45,16 +45,29 @@
         </div>
     @endif
 
-    {{-- Erreurs de validation --}}
-    @if($errors->any())
+    {{-- Erreurs de validation et messages de session --}}
+    @if(session('error') || $errors->any())
         <div class="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-sm font-medium">
-            <div class="flex items-center gap-2 mb-2 font-bold">
-                <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856C18.448 19 19 18.552 19 18V6c0-.552-.448-1-1-1H6c-.552 0-1 .448-1 1v12c0 .552.448 1 1 1z"/></svg>
+            <div class="flex items-center gap-2 mb-2 font-bold text-rose-700">
+                <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Erreur lors de l'upload
             </div>
+            @if(session('error'))
+                <p class="font-semibold">{{ session('error') }}</p>
+            @endif
             @foreach($errors->all() as $error)
                 <p>{{ $error }}</p>
             @endforeach
+        </div>
+    @endif
+
+    @if(session('info'))
+        <div class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl text-sm font-medium">
+            <div class="flex items-center gap-2 font-bold text-blue-700">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Information
+            </div>
+            <p class="mt-1">{{ session('info') }}</p>
         </div>
     @endif
 

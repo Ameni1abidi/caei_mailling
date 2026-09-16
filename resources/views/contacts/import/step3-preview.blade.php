@@ -36,6 +36,18 @@
             <span class="font-bold">Import dédié à :</span>
             <span class="font-semibold">{{ $targetCategory->name }}</span>
         </div>
+    {{-- Erreurs de validation et messages de session --}}
+    @if(session('error') || $errors->any())
+        <div class="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-sm font-medium">
+            <div class="flex items-center gap-2 mb-1 font-bold text-rose-700">
+                <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Erreur de prévisualisation
+            </div>
+            @if(session('error'))
+                <p class="font-semibold">{{ session('error') }}</p>
+            @endif
+            @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+        </div>
     @endif
 
     {{-- Stats aperçu --}}

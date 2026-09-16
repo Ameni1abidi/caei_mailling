@@ -79,6 +79,15 @@
             <p class="text-xs mt-1">Vous pouvez quitter cette page, l'import continuera en arrière-plan.</p>
         </div>
 
+        {{-- Message d'erreur en cas d'échec --}}
+        <div x-show="isFailed" class="mt-6 p-4 bg-rose-50 border border-rose-200 rounded-xl text-left" style="display:none">
+            <div class="flex items-center gap-2 font-bold text-rose-700 text-sm mb-1">
+                <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                L'importation a échoué
+            </div>
+            <p class="text-xs text-rose-800 font-semibold font-mono" x-text="errorMessage || 'Une erreur est survenue durant l\'importation.'"></p>
+        </div>
+
         {{-- Bouton résultat --}}
         <div x-show="isDone" class="mt-6 text-center" style="display:none">
             <a :href="resultUrl"
@@ -99,6 +108,7 @@ function importProgress(importLogId) {
         errors: 0,
         isDone: false,
         isFailed: false,
+        errorMessage: '',
         resultUrl: '',
         statusLabel: 'Initialisation...',
         pollingInterval: null,
@@ -118,10 +128,11 @@ function importProgress(importLogId) {
                 });
                 const data = await res.json();
 
-                this.progress   = data.progress;
-                this.imported   = data.imported;
-                this.duplicates = data.duplicates;
-                this.errors     = data.errors;
+                this.progress     = data.progress;
+                this.imported     = data.imported;
+                this.duplicates   = data.duplicates;
+                this.errors       = data.errors;
+                this.errorMessage = data.error_message || '';
 
                 const labels = {
                     'pending':    'En attente de traitement...',
@@ -138,8 +149,8 @@ function importProgress(importLogId) {
                     this.resultUrl = data.result_url;
                     this.progress = 100;
 
-                    // Redirection automatique après 1.5s
-                    setTimeout(() => { window.location.href = data.result_url; }, 1500);
+                    // Redirection automatique après 2.5s si pas d'erreur majeure
+                    setTimeout(() => { window.location.href = data.result_url; }, 2500);
                 }
             } catch (e) {
                 console.error('Polling error:', e);

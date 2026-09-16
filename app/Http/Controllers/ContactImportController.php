@@ -144,7 +144,7 @@ class ContactImportController extends Controller
 
         // Catégorie cible pour l'import dédié
         $targetCategory = null;
-        $targetCategoryId = session('import_target_category_id');
+        $targetCategoryId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
         if ($targetCategoryId) {
             $targetCategory = Category::find($targetCategoryId);
         }
@@ -172,6 +172,13 @@ class ContactImportController extends Controller
         $mapping     = $request->input('mapping', []);
         $categoryIds = $request->input('category_ids', []);
         $dupStrategy = $request->input('duplicate_strategy', 'ignore');
+
+        if (empty($categoryIds)) {
+            $targetCatId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
+            if ($targetCatId) {
+                $categoryIds = [$targetCatId];
+            }
+        }
 
         // Vérifier que l'email est mappé
         if (!in_array('email', $mapping, true)) {
@@ -271,7 +278,7 @@ class ContactImportController extends Controller
 
         // Catégorie cible pour l'import dédié
         $targetCategory = null;
-        $targetCategoryId = session('import_target_category_id');
+        $targetCategoryId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
         if ($targetCategoryId) {
             $targetCategory = Category::find($targetCategoryId);
         }
@@ -318,7 +325,7 @@ class ContactImportController extends Controller
         $this->authorizeImport($importLog);
 
         $targetCategory = null;
-        $targetCategoryId = session('import_target_category_id');
+        $targetCategoryId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
         if ($targetCategoryId) {
             $targetCategory = Category::find($targetCategoryId);
         }
@@ -347,6 +354,11 @@ class ContactImportController extends Controller
             $progressPercent = min(95, (int) (($done / $importLog->total_rows) * 100));
         }
 
+        $errorMessage = null;
+        if ($status === 'failed' && !empty($importLog->error_details)) {
+            $errorMessage = $importLog->error_details[0]['error'] ?? 'Échec lors du traitement de l\'import.';
+        }
+
         return response()->json([
             'status'          => $status,
             'is_done'         => $isDone,
@@ -355,6 +367,7 @@ class ContactImportController extends Controller
             'duplicates'      => $importLog->duplicates,
             'errors'          => $importLog->errors,
             'total_rows'      => $importLog->total_rows,
+            'error_message'   => $errorMessage,
             'result_url'      => $isDone
                 ? route('contacts.import.result', $importLogId)
                 : null,
@@ -375,7 +388,7 @@ class ContactImportController extends Controller
 
         // Récupérer la catégorie cible pour afficher le bouton de retour
         $targetCategory = null;
-        $targetCategoryId = session('import_target_category_id');
+        $targetCategoryId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
         if ($targetCategoryId) {
             $targetCategory = Category::find($targetCategoryId);
         }
