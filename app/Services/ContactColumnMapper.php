@@ -129,6 +129,13 @@ class ContactColumnMapper
      */
     public static function detectField(string $columnName): ?string
     {
+        $trimmed = trim($columnName);
+
+        // Si le nom de la colonne est lui-même une adresse email (ex: fichier sans en-tête)
+        if (filter_var($trimmed, FILTER_VALIDATE_EMAIL) || (str_contains($trimmed, '@') && str_contains($trimmed, '.'))) {
+            return 'email';
+        }
+
         $normalized = self::normalize($columnName);
 
         foreach (self::getVariants() as $field => $variants) {

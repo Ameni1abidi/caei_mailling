@@ -144,7 +144,7 @@ class ContactImportController extends Controller
 
         // Catégorie cible pour l'import dédié
         $targetCategory = null;
-        $targetCategoryId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
+        $targetCategoryId = session('import_target_category_id') ?? (!empty($importLog->category_ids) && is_array($importLog->category_ids) ? $importLog->category_ids[0] : null);
         if ($targetCategoryId) {
             $targetCategory = Category::find($targetCategoryId);
         }
@@ -174,7 +174,7 @@ class ContactImportController extends Controller
         $dupStrategy = $request->input('duplicate_strategy', 'ignore');
 
         if (empty($categoryIds)) {
-            $targetCatId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
+            $targetCatId = session('import_target_category_id') ?? (!empty($importLog->category_ids) && is_array($importLog->category_ids) ? $importLog->category_ids[0] : null);
             if ($targetCatId) {
                 $categoryIds = [$targetCatId];
             }
@@ -278,7 +278,7 @@ class ContactImportController extends Controller
 
         // Catégorie cible pour l'import dédié
         $targetCategory = null;
-        $targetCategoryId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
+        $targetCategoryId = session('import_target_category_id') ?? (!empty($importLog->category_ids) && is_array($importLog->category_ids) ? $importLog->category_ids[0] : null);
         if ($targetCategoryId) {
             $targetCategory = Category::find($targetCategoryId);
         }
@@ -325,7 +325,7 @@ class ContactImportController extends Controller
         $this->authorizeImport($importLog);
 
         $targetCategory = null;
-        $targetCategoryId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
+        $targetCategoryId = session('import_target_category_id') ?? (!empty($importLog->category_ids) && is_array($importLog->category_ids) ? $importLog->category_ids[0] : null);
         if ($targetCategoryId) {
             $targetCategory = Category::find($targetCategoryId);
         }
@@ -388,7 +388,7 @@ class ContactImportController extends Controller
 
         // Récupérer la catégorie cible pour afficher le bouton de retour
         $targetCategory = null;
-        $targetCategoryId = session('import_target_category_id') ?? ($importLog->category_ids[0] ?? null);
+        $targetCategoryId = session('import_target_category_id') ?? (!empty($importLog->category_ids) && is_array($importLog->category_ids) ? $importLog->category_ids[0] : null);
         if ($targetCategoryId) {
             $targetCategory = Category::find($targetCategoryId);
         }
