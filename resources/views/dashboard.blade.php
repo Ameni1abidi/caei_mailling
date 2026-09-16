@@ -10,7 +10,7 @@
                         Tableau de bord
                     </h1>
                     <p class="text-sm text-slate-400 mt-1">
-                        Aperçu de l'activité — {{ ucfirst(now()->translatedFormat('l j F Y')) }}
+                        Aperçu de l'activité — {{ now()->format('d/m/Y') }}
                     </p>
                 </div>
 
