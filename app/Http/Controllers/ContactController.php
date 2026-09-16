@@ -210,4 +210,75 @@ class ContactController extends Controller
 
         return view('contacts.import-history', compact('imports'));
     }
+
+    public function export(Request $request)
+    {
+        $fileName = 'export_contacts_' . date('Y-m-d_H-i') . '.csv';
+
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename={$fileName}",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $query = Contact::query();
+
+        if ($request->filled('pays')) {
+            $query->where('pays', $request->pays);
+        }
+        if ($request->filled('secteur_activite')) {
+            $query->where('secteur_activite', $request->secteur_activite);
+        }
+        $categoryFilter = $request->input('category_id', $request->input('categorie'));
+        if ($categoryFilter) {
+            $query->whereHas('categories', function ($q) use ($categoryFilter) {
+                $q->where('categories.id', $categoryFilter);
+            });
+        }
+        if ($request->filled('status')) {
+            $query->where('prospect_status', $request->status);
+        }
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('nom', 'like', "%{$request->search}%")
+                  ->orWhere('prenom', 'like', "%{$request->search}%")
+                  ->orWhere('entreprise', 'like', "%{$request->search}%")
+                  ->orWhere('email', 'like', "%{$request->search}%");
+            });
+        }
+
+        $contacts = $query->latest()->get();
+
+        $callback = function() use ($contacts) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($file, [
+                'Nom', 'Prénom', 'Email', 'Entreprise', 'Fonction',
+                'Téléphone', 'WhatsApp', 'Pays', 'Ville', 'Secteur d\'activité', 'Statut'
+            ], ';');
+
+            foreach ($contacts as $c) {
+                fputcsv($file, [
+                    $c->nom,
+                    $c->prenom,
+                    $c->email,
+                    $c->entreprise,
+                    $c->fonction,
+                    $c->telephone,
+                    $c->whatsapp,
+                    $c->pays,
+                    $c->ville,
+                    $c->secteur_activite,
+                    $c->prospect_status
+                ], ';');
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
