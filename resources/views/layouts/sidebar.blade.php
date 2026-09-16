@@ -94,7 +94,7 @@
             @php($isActive = request()->routeIs($item['active']))
 
             <a href="{{ route($item['route']) }}"
-               class="{{ $isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/30' : 'text-slate-300 hover:bg-white/10 hover:text-white' }} group flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition">
+               class="{{ $isActive ? 'bg-gradient-to-r from-[#D9822B] via-[#C57A1E] to-[#B86D18] text-slate-950 font-extrabold shadow-lg shadow-amber-950/40' : 'text-slate-300 hover:bg-white/10 hover:text-white' }} group flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition">
                 @include('layouts.sidebar-icon', ['name' => $item['icon']])
                 <span>{{ $item['label'] }}</span>
             </a>
@@ -121,7 +121,7 @@
 
                 <div class="flex items-center gap-1">
                     <a href="{{ route($item['route']) }}"
-                       class="flex-1 {{ $isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/30' : 'text-slate-300 hover:bg-white/10 hover:text-white' }} group flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition">
+                       class="flex-1 {{ $isActive ? 'bg-gradient-to-r from-[#D9822B] via-[#C57A1E] to-[#B86D18] text-slate-950 font-extrabold shadow-lg shadow-amber-950/40' : 'text-slate-300 hover:bg-white/10 hover:text-white' }} group flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition">
                         @include('layouts.sidebar-icon', ['name' => $item['icon']])
                         <span>{{ $item['label'] }}</span>
                     </a>

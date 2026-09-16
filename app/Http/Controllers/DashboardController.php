@@ -17,7 +17,8 @@ class DashboardController extends Controller
         $isAdmin = $user?->hasRole('admin');
 
         // ── Email logs stats — scoped to user's campaigns ───────────────
-        $userCampaignIds = Campaign::forUser($user)->pluck('id');
+        $userCampaignQuery = Campaign::forUser($user);
+        $userCampaignIds   = (clone $userCampaignQuery)->pluck('id');
 
         $emailLogStats = EmailLog::whereIn('campaign_id', $userCampaignIds)
             ->selectRaw(
@@ -30,8 +31,9 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('status');
 
-        $campagnesEnvoyees    = Campaign::forUser($user)->where('statut', 'envoyee')->count();
-        $campagnesProgrammees = Campaign::forUser($user)->where('statut', 'en_cours')->count();
+        $campagnesEnvoyees    = (clone $userCampaignQuery)->where('statut', 'envoyee')->count();
+        $campagnesProgrammees = (clone $userCampaignQuery)->where('statut', 'en_cours')->count();
+        $campagnesCeMois      = (clone $userCampaignQuery)->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count();
 
         $sentRow      = $emailLogStats->get(EmailLog::STATUS_SENT);
         $deliveredRow = $emailLogStats->get(EmailLog::STATUS_DELIVERED);
@@ -47,7 +49,13 @@ class DashboardController extends Controller
                         + (int) ($bouncedRow?->cnt ?? 0)
                         + (int) ($invalidRow?->cnt ?? 0);
 
-        // ── Prospect stats — always global (contacts belong to everyone) ─
+        $tauxLivraison = $emailsEnvoyes > 0 ? round(($emailsDelivres / $emailsEnvoyes) * 100, 1) : 100.0;
+        $tauxOuvertureGlobal = $emailsEnvoyes > 0 ? round(($emailsOuverts / $emailsEnvoyes) * 100, 1) : 0.0;
+
+        // ── Contact stats ───────────────
+        $totalContacts = Contact::count();
+        $totalImportedLogsSum = Schema::hasTable('import_logs') ? (int) ImportLog::sum('imported') : $totalContacts;
+
         $contactStatRows = Contact::selectRaw('prospect_status, COUNT(*) as cnt')
             ->groupBy('prospect_status')
             ->pluck('cnt', 'prospect_status');
@@ -62,7 +70,86 @@ class DashboardController extends Controller
             'client'    => (int) $contactStatRows->get(Contact::STATUS_CLIENT, 0),
         ];
 
-        // ── Campaign stats table — scoped to user's campaigns ──────────
+        // ── Queue & Worker stats ───────────────────────
+        $hasJobsTable       = Schema::hasTable('jobs');
+        $hasFailedJobsTable = Schema::hasTable('failed_jobs');
+
+        $jobsEnAttente = $hasJobsTable ? DB::table('jobs')->count() : 0;
+        $jobsEchoues24h = $hasFailedJobsTable
+            ? DB::table('failed_jobs')->where('failed_at', '>=', now()->subHours(24))->count()
+            : 0;
+
+        $jobsTraitesAujourdhui = EmailLog::whereIn('campaign_id', $userCampaignIds)
+            ->whereDate('created_at', now()->today())
+            ->count();
+
+        // ── Chart 14 jours data ───────────────────────
+        $chartLabels = [];
+        $chartSentData = [];
+        $chartErrorData = [];
+
+        for ($i = 13; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $dateKey = $date->format('Y-m-d');
+            $chartLabels[] = $date->translatedFormat('d M');
+
+            $dayLogs = EmailLog::whereIn('campaign_id', $userCampaignIds)
+                ->whereDate('created_at', $dateKey)
+                ->selectRaw('
+                    SUM(CASE WHEN status IN ("sent", "delivered") THEN 1 ELSE 0 END) as sent_cnt,
+                    SUM(CASE WHEN status IN ("failed", "bounced", "invalid") THEN 1 ELSE 0 END) as err_cnt
+                ')
+                ->first();
+
+            $chartSentData[]  = (int) ($dayLogs->sent_cnt ?? 0);
+            $chartErrorData[] = (int) ($dayLogs->err_cnt ?? 0);
+        }
+
+        // ── Répartition par catégories ─────────────────
+        $categoriesBreakdown = Category::withCount('contacts')
+            ->orderByDesc('contacts_count')
+            ->take(5)
+            ->get();
+        $uncategorizedCount = Contact::whereDoesntHave('categories')->count();
+
+        // ── Fil d'activité récente (Timeline) ───────────
+        $recentActivities = collect();
+
+        // Ajout des dernières campagnes
+        Campaign::forUser($user)->latest()->take(3)->get()->each(function ($c) use (&$recentActivities) {
+            $recentActivities->push([
+                'type'       => 'campaign',
+                'title'      => 'Campagne « ' . $c->nom . ' » (' . ucfirst($c->statut) . ')',
+                'time'       => $c->created_at,
+                'time_human' => $c->created_at ? $c->created_at->diffForHumans() : 'Récemment',
+                'icon_bg'    => 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                'icon_svg'   => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>',
+            ]);
+        });
+
+        // Ajout des derniers imports
+        if (Schema::hasTable('import_logs')) {
+            ImportLog::with('user')->latest()->take(3)->get()->each(function ($imp) use (&$recentActivities) {
+                $userName = $imp->user?->name ?? 'Utilisateur';
+                $recentActivities->push([
+                    'type'       => 'import',
+                    'title'      => $userName . ' a importé « ' . $imp->filename . ' » — ' . $imp->imported . ' contact(s) ajouté(s)',
+                    'time'       => $imp->created_at,
+                    'time_human' => $imp->created_at ? $imp->created_at->diffForHumans() : 'Récemment',
+                    'icon_bg'    => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                    'icon_svg'   => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>',
+                ]);
+            });
+        }
+
+        $recentActivities = $recentActivities->sortByDesc('time')->take(5)->values();
+
+        // ── Active SMTP ─────────────────
+        $activeSmtp = Schema::hasTable('smtp_settings')
+            ? SmtpSetting::where('is_active', true)->first()
+            : null;
+
+        // ── Campaign stats table ─────────────────────────
         $campaignsWithStats = Campaign::forUser($user)
             ->with('creator')
             ->withCount([
@@ -89,16 +176,31 @@ class DashboardController extends Controller
                         EmailLog::STATUS_INVALID,
                     ]);
                 }
-            ])->latest()->take(10)->get();
+            ])->latest()->take(6)->get();
 
         return view('dashboard', compact(
             'campagnesEnvoyees',
             'campagnesProgrammees',
+            'campagnesCeMois',
             'emailsEnvoyes',
             'emailsDelivres',
             'emailsOuverts',
             'emailsClics',
             'emailsRejetes',
+            'tauxLivraison',
+            'tauxOuvertureGlobal',
+            'totalContacts',
+            'totalImportedLogsSum',
+            'jobsEnAttente',
+            'jobsEchoues24h',
+            'jobsTraitesAujourdhui',
+            'chartLabels',
+            'chartSentData',
+            'chartErrorData',
+            'categoriesBreakdown',
+            'uncategorizedCount',
+            'recentActivities',
+            'activeSmtp',
             'prospectStats',
             'campaignsWithStats',
             'isAdmin'
