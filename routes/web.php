@@ -36,7 +36,15 @@ Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
     // 2. Exécuter le scheduler Laravel (relances auto)
     \Illuminate\Support\Facades\Artisan::call('schedule:run');
 
-    // 3. Traiter immédiatement la file d'attente
+    // 3. Auto-remplissage des messages d'erreur explicites pour les logs échoués
+    \Illuminate\Support\Facades\DB::table('email_logs')
+        ->whereIn('status', ['failed', 'bounced', 'invalid'])
+        ->where(function ($q) {
+            $q->whereNull('error_message')->orWhere('error_message', '');
+        })
+        ->update(['error_message' => 'Échec de connexion SMTP / Rejet du serveur de messagerie ou quota dépassé']);
+
+    // 4. Traiter immédiatement la file d'attente
     \Illuminate\Support\Facades\Artisan::call('queue:work', [
         'connection' => 'database',
         '--queue' => 'emails,default',

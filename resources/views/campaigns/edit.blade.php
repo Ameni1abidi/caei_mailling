@@ -593,8 +593,8 @@
                                                 <span class="text-[10px] uppercase font-semibold text-rose-600">{{ $log->status }}</span>
                                             </div>
                                             <div class="text-[11px] font-mono text-rose-700 break-words mt-1">
-                                                {{ $log->error_message ?? 'Aucun message d\'erreur explicite retourné' }}
-                                            </div>
+                                                 {{ !empty($log->error_message) ? $log->error_message : 'Échec de connexion SMTP / Rejet du serveur ou domaine destinataire inatteignable' }}
+                                             </div>
                                         </div>
                                     @endforeach
                                 </div>
