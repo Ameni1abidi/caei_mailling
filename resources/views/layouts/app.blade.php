@@ -43,11 +43,11 @@
             </div>
 
             <div class="lg:pl-72">
-                <header class="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 shadow-sm backdrop-blur lg:hidden">
+                <header class="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-[#1E3A8A]/50 bg-[#03123F] text-white px-4 shadow-md lg:hidden">
                     <button
                         type="button"
                         @click="sidebarOpen = true"
-                        class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-100"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#1E3A8A] text-slate-200 transition hover:bg-[#0A1C50]"
                         aria-label="Ouvrir le menu"
                     >
                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -56,15 +56,15 @@
                     </button>
                     <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
                         <img src="{{ asset('images/logo-caei.jpg') }}" alt="CAEI" class="h-8 w-8 rounded-full object-cover ring-1 ring-amber-500/50">
-                        <span class="text-base font-black text-slate-900 tracking-tight">CAEI</span>
+                        <span class="text-base font-black text-white tracking-tight">CAEI</span>
                     </a>
                     <div class="h-10 w-10"></div>
                 </header>
 
                 <!-- Page Heading -->
                 @isset($header)
-                    <header class="bg-white shadow">
-                        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                    <header class="bg-[#03123F] border-b border-[#1E3A8A]/50 shadow-md">
+                        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-white">
                             {{ $header }}
                         </div>
                     </header>
