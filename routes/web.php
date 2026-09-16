@@ -77,10 +77,12 @@ Route::middleware('auth')->group(function () {
     Route::get('contacts/import/{importLogId}/errors', [App\Http\Controllers\ContactImportController::class, 'downloadErrors'])->name('contacts.import.errors');
 
     // Routes spécifiques contacts (avant resource pour éviter conflit avec {contact})
+    Route::get('contacts/export', [ContactController::class, 'export'])->name('contacts.export');
     Route::post('contacts/import', [ContactController::class, 'import'])->name('contacts.import');
     Route::get('contacts/import-history', [ContactController::class, 'importHistory'])->name('contacts.import-history');
     Route::resource('contacts', ContactController::class);
 
+    Route::get('categories/{category}/export', [CategoryController::class, 'export'])->name('categories.export');
     Route::resource('categories', CategoryController::class);
     Route::post('categories/{category}/add-contacts', [CategoryController::class, 'addContacts'])->name('categories.addContacts');
     Route::delete('categories/{category}/remove-contact/{contact}', [CategoryController::class, 'removeContact'])->name('categories.removeContact');

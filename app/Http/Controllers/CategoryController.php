@@ -139,5 +139,53 @@ class CategoryController extends Controller
         $category->contacts()->detach($contact->id);
         return redirect()->route('categories.show', $category)->with('success', 'Contact retiré de la liste.');
     }
+
+    public function export(Category $category)
+    {
+        $slug = \Illuminate\Support\Str::slug($category->name);
+        $fileName = "contacts_liste_{$slug}_" . date('Y-m-d_H-i') . ".csv";
+
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename={$fileName}",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $contacts = $category->contacts()->get();
+
+        $callback = function() use ($contacts) {
+            $file = fopen('php://output', 'w');
+            // BOM UTF-8 pour ouverture correcte dans Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // En-tête du fichier CSV
+            fputcsv($file, [
+                'Nom', 'Prénom', 'Email', 'Entreprise', 'Fonction',
+                'Téléphone', 'WhatsApp', 'Pays', 'Ville', 'Secteur d\'activité', 'Statut'
+            ], ';');
+
+            foreach ($contacts as $c) {
+                fputcsv($file, [
+                    $c->nom,
+                    $c->prenom,
+                    $c->email,
+                    $c->entreprise,
+                    $c->fonction,
+                    $c->telephone,
+                    $c->whatsapp,
+                    $c->pays,
+                    $c->ville,
+                    $c->secteur_activite,
+                    $c->prospect_status
+                ], ';');
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
 
