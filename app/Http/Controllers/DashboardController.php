@@ -91,14 +91,14 @@ class DashboardController extends Controller
         for ($i = 13; $i >= 0; $i--) {
             $date = now()->subDays($i);
             $dateKey = $date->format('Y-m-d');
-            $chartLabels[] = $date->translatedFormat('d M');
+            $chartLabels[] = $date->format('d M');
 
             $dayLogs = EmailLog::whereIn('campaign_id', $userCampaignIds)
                 ->whereDate('created_at', $dateKey)
-                ->selectRaw('
-                    SUM(CASE WHEN status IN ("sent", "delivered") THEN 1 ELSE 0 END) as sent_cnt,
-                    SUM(CASE WHEN status IN ("failed", "bounced", "invalid") THEN 1 ELSE 0 END) as err_cnt
-                ')
+                ->selectRaw("
+                    SUM(CASE WHEN status IN ('sent', 'delivered') THEN 1 ELSE 0 END) as sent_cnt,
+                    SUM(CASE WHEN status IN ('failed', 'bounced', 'invalid') THEN 1 ELSE 0 END) as err_cnt
+                ")
                 ->first();
 
             $chartSentData[]  = (int) ($dayLogs->sent_cnt ?? 0);
