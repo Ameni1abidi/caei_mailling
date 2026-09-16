@@ -287,16 +287,37 @@
                         <tbody class="divide-y divide-slate-100">
                             @forelse($contacts as $contact)
                                 @php
-                                    $initials = strtoupper(substr($contact->prenom ?? '', 0, 1) . substr($contact->nom ?? '', 0, 1));
-                                    if (!$initials) $initials = 'CT';
+                                    $prenom = trim($contact->prenom ?? '');
+                                    $nom    = trim($contact->nom ?? '');
+                                    $entreprise = trim($contact->entreprise ?? '');
+                                    $email  = trim($contact->email ?? '');
 
+                                    if ($prenom !== '' || $nom !== '') {
+                                        $firstP = $prenom !== '' ? mb_substr($prenom, 0, 1) : '';
+                                        $firstN = $nom !== '' ? mb_substr($nom, 0, 1) : mb_substr($prenom, 1, 1);
+                                        $initials = strtoupper($firstP . $firstN);
+                                    } elseif ($entreprise !== '') {
+                                        $initials = strtoupper(mb_substr($entreprise, 0, 2));
+                                    } elseif ($email !== '') {
+                                        $initials = strtoupper(mb_substr(explode('@', $email)[0], 0, 2));
+                                    } else {
+                                        $initials = 'CT';
+                                    }
+
+                                    $hashKey = $email !== '' ? $email : (string) $contact->id;
                                     $bgGradients = [
-                                        'from-[#03123F] to-[#1E3A8A]',
-                                        'from-[#D9822B] to-[#C57A1E]',
-                                        'from-emerald-600 to-teal-700',
-                                        'from-purple-600 to-indigo-700',
+                                        'bg-gradient-to-br from-[#03123F] to-[#1E3A8A] text-white',
+                                        'bg-gradient-to-br from-[#D9822B] to-[#C57A1E] text-white',
+                                        'bg-gradient-to-br from-emerald-600 to-teal-700 text-white',
+                                        'bg-gradient-to-br from-purple-600 to-indigo-700 text-white',
+                                        'bg-gradient-to-br from-sky-600 to-blue-700 text-white',
                                     ];
-                                    $bgGradient = $bgGradients[abs(crc32($contact->email)) % 4];
+                                    $bgGradient = $bgGradients[abs(crc32($hashKey)) % count($bgGradients)];
+
+                                    $displayName = trim($prenom . ' ' . $nom);
+                                    if ($displayName === '') {
+                                        $displayName = $entreprise !== '' ? $entreprise : ($email !== '' ? $email : 'Contact #' . $contact->id);
+                                    }
 
                                     $stMeta = $statusOptions[$contact->prospect_status] ?? [
                                         'label' => $contact->prospect_status ?? 'Nouveau prospect',
@@ -308,12 +329,12 @@
                                     <!-- Contact Name & Avatar -->
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ $bgGradient }} text-white font-extrabold text-xs flex items-center justify-center shadow-sm shrink-0 ring-2 ring-white">
+                                            <div class="w-10 h-10 rounded-full {{ $bgGradient }} font-black text-xs flex items-center justify-center shadow-sm shrink-0 border border-slate-200/50">
                                                 {{ $initials }}
                                             </div>
                                             <div>
                                                 <div class="font-bold text-slate-900 group-hover:text-[#C57A1E] transition">
-                                                    {{ $contact->prenom }} {{ $contact->nom }}
+                                                    {{ $displayName }}
                                                 </div>
                                                 @if($contact->source)
                                                     <div class="text-[11px] text-slate-400 mt-0.5">Source : {{ $contact->source }}</div>
