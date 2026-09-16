@@ -41,6 +41,18 @@
             <span class="font-bold">Import terminé pour la liste :</span>
             <span class="font-semibold">{{ $targetCategory->name }}</span>
         </div>
+    {{-- Alerte d'échec d'import --}}
+    @if($importLog->status === 'failed')
+        <div class="bg-rose-50 border-2 border-rose-300 text-rose-900 p-5 rounded-2xl shadow-sm">
+            <div class="flex items-center gap-3 font-extrabold text-base text-rose-700 mb-2">
+                <svg class="w-6 h-6 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Échec de l'importation
+            </div>
+            @php
+                $firstErr = $errorDetails[0]['error'] ?? 'Une erreur est survenue lors de l\'exécution de l\'importation.';
+            @endphp
+            <p class="text-sm font-semibold text-rose-800 bg-white p-3 rounded-xl border border-rose-200 font-mono">{{ $firstErr }}</p>
+        </div>
     @endif
 
     {{-- Stats finales --}}

@@ -98,6 +98,7 @@ class ProcessContactImport implements ShouldQueue
 
             $headers = null;
             $batch   = [];
+            $duplicateEmails = [];
 
             foreach ($lines as $lineIndex => $line) {
                 if (trim($line) === '') {
@@ -126,20 +127,24 @@ class ProcessContactImport implements ShouldQueue
                     $seenEmails[strtolower($result['data']['email'])] = true;
                 } elseif ($result['status'] === 'duplicate') {
                     $duplicates++;
+                    if (!empty($result['email'])) {
+                        $duplicateEmails[] = $result['email'];
+                    }
                 } else {
                     $errors[] = $result['error'];
                 }
 
                 // Insérer par lots de CHUNK_SIZE
-                if (count($batch) >= self::CHUNK_SIZE) {
-                    $imported += $this->batchInsert($batch, $categoryIds, $importLog->id, $dupStrategy, $existingEmails);
+                if (count($batch) >= self::CHUNK_SIZE || count($duplicateEmails) >= self::CHUNK_SIZE) {
+                    $imported += $this->batchInsert($batch, $categoryIds, $importLog->id, $dupStrategy, $existingEmails, $duplicateEmails);
                     $batch = [];
+                    $duplicateEmails = [];
                 }
             }
 
             // Dernier lot
-            if (!empty($batch)) {
-                $imported += $this->batchInsert($batch, $categoryIds, $importLog->id, $dupStrategy, $existingEmails);
+            if (!empty($batch) || !empty($duplicateEmails)) {
+                $imported += $this->batchInsert($batch, $categoryIds, $importLog->id, $dupStrategy, $existingEmails, $duplicateEmails);
             }
         } else {
             // ─── XLSX/XLS ────────────────────────────────────────────────
@@ -167,6 +172,8 @@ class ProcessContactImport implements ShouldQueue
                 public function array(array $rows): void
                 {
                     $batch = [];
+                    $duplicateEmails = [];
+
                     foreach ($rows as $rowIndex => $row) {
                         $row = array_map('strval', $row);
 
@@ -196,15 +203,18 @@ class ProcessContactImport implements ShouldQueue
                             $this->seenEmails[strtolower($result['data']['email'])] = true;
                         } elseif ($result['status'] === 'duplicate') {
                             $this->duplicates++;
+                            if (!empty($result['email'])) {
+                                $duplicateEmails[] = $result['email'];
+                            }
                         } else {
                             $this->errors[] = $result['error'];
                         }
                     }
 
-                    if (!empty($batch)) {
+                    if (!empty($batch) || !empty($duplicateEmails)) {
                         $this->imported += ProcessContactImport::batchInsertStatic(
                             $batch, $this->categoryIds, $this->importLogId,
-                            $this->dupStrategy, $this->existingEmails
+                            $this->dupStrategy, $this->existingEmails, $duplicateEmails
                         );
                     }
                 }
@@ -275,13 +285,13 @@ class ProcessContactImport implements ShouldQueue
 
         // Doublon interne au fichier
         if (isset($seenEmails[strtolower($email)])) {
-            return ['status' => 'duplicate'];
+            return ['status' => 'duplicate', 'email' => strtolower($email)];
         }
 
         // Doublon avec la base existante
         if (isset($existingEmails[strtolower($email)])) {
             if ($dupStrategy === 'ignore') {
-                return ['status' => 'duplicate'];
+                return ['status' => 'duplicate', 'email' => strtolower($email)];
             }
             // strategy = 'update' : on marque pour mise à jour
             $data['_update'] = true;
@@ -295,20 +305,22 @@ class ProcessContactImport implements ShouldQueue
      */
     private function batchInsert(
         array $batch, array $categoryIds, int $importLogId,
-        string $dupStrategy, array &$existingEmails
+        string $dupStrategy, array &$existingEmails, array $duplicateEmails = []
     ): int {
-        return self::batchInsertStatic($batch, $categoryIds, $importLogId, $dupStrategy, $existingEmails);
+        return self::batchInsertStatic($batch, $categoryIds, $importLogId, $dupStrategy, $existingEmails, $duplicateEmails);
     }
 
     public static function batchInsertStatic(
         array $batch, array $categoryIds, int $importLogId,
-        string $dupStrategy, array &$existingEmails
+        string $dupStrategy, array &$existingEmails, array $duplicateEmails = []
     ): int {
         $imported   = 0;
         $toInsert   = [];
         $toUpdate   = [];
         $now        = now()->toDateTimeString();
         $defaultStatus = Contact::STATUS_NOUVEAU;
+
+        $emailsToLink = [];
 
         foreach ($batch as $data) {
             $isUpdate = $data['_update'] ?? false;
@@ -325,6 +337,10 @@ class ProcessContactImport implements ShouldQueue
                 $data['created_at'] = $now;
                 $data['updated_at'] = $now;
                 $toInsert[] = $data;
+            }
+
+            if (!empty($data['email'])) {
+                $emailsToLink[] = strtolower($data['email']);
             }
         }
 
@@ -356,20 +372,22 @@ class ProcessContactImport implements ShouldQueue
             }
         }
 
-        // Associer aux catégories
-        if (!empty($categoryIds) && !empty($toInsert)) {
-            $insertedIds = Contact::whereIn('email', array_column($toInsert, 'email'))
-                ->pluck('id');
+        // Associer aux catégories (nouveaux, mis à jour, et doublons de la liste)
+        if (!empty($categoryIds)) {
+            $allEmails = array_unique(array_merge($emailsToLink, $duplicateEmails));
+            if (!empty($allEmails)) {
+                $contactIds = Contact::whereIn('email', $allEmails)->pluck('id');
 
-            $pivots = [];
-            foreach ($insertedIds as $contactId) {
-                foreach ($categoryIds as $catId) {
-                    $pivots[] = ['contact_id' => $contactId, 'category_id' => $catId];
+                $pivots = [];
+                foreach ($contactIds as $contactId) {
+                    foreach ($categoryIds as $catId) {
+                        $pivots[] = ['contact_id' => $contactId, 'category_id' => $catId];
+                    }
                 }
-            }
 
-            if (!empty($pivots)) {
-                DB::table('category_contact')->insertOrIgnore($pivots);
+                if (!empty($pivots)) {
+                    DB::table('category_contact')->insertOrIgnore($pivots);
+                }
             }
         }
 
