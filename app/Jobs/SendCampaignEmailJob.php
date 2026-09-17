@@ -120,6 +120,15 @@ class SendCampaignEmailJob implements ShouldQueue
             Log::error("Échec envoi campagne #{$this->campaign->id} à {$this->contact->email} : " . $errMsg);
 
             $campaign->markAsSentIfAllEmailsAreSent();
+
+            // Ne pas retenter pour les adresses définitivement invalides
+            // (domaine inexistant, adresse rejetée, etc.).
+            // Retenter ne ferait qu'épuiser les tentatives inutilement.
+            if ($status === EmailLog::STATUS_INVALID || $status === EmailLog::STATUS_BOUNCED) {
+                $this->delete();
+                return;
+            }
+
             throw $e;
         }
     }
@@ -131,12 +140,17 @@ class SendCampaignEmailJob implements ShouldQueue
             $errMsg = 'Échec du Queue Worker : Tentatives épuisées ou rejet de connexion SMTP';
         }
 
+        // Ne pas écraser un statut `invalid` ou `bounced` déjà enregistré
+        // par une tentative précédente — ces statuts sont définitifs.
         EmailLog::where('id', $this->emailLogId)
             ->whereIn('status', [EmailLog::STATUS_PENDING, EmailLog::STATUS_FAILED])
             ->update([
                 'status'        => EmailLog::STATUS_FAILED,
                 'error_message' => substr($errMsg, 0, 500),
             ]);
+
+        $campaign = Campaign::find($this->campaign->id);
+        $campaign?->markAsSentIfAllEmailsAreSent();
     }
 
     /**
