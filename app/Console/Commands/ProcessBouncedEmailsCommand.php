@@ -50,6 +50,10 @@ class ProcessBouncedEmailsCommand extends Command
             return self::FAILURE;
         }
 
+        // Nettoyer le host : imap_open() n'accepte pas les préfixes "ssl://" ou "imap://"
+        // Le SSL est spécifié via le flag /ssl dans la chaîne de mailbox
+        $host = preg_replace('#^[a-z+]+://#i', '', $host);
+
         $mailbox = "{" . $host . ":" . $port . "/imap/ssl/novalidate-cert}INBOX";
 
         $this->info("Connexion IMAP : {$user}@{$host}:{$port}");
