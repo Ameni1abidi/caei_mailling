@@ -67,11 +67,19 @@ class CampaignMail extends Mailable
         $mail->withSymfonyMessage(function ($message) use ($unsubscribeUrl) {
             $headers = $message->getHeaders();
 
-            // 1. Désinscription sécurisée en 1 clic (respect des critères anti-spam sans forcer l'onglet Promotions)
+            // 1. Return-Path : redirige les NDR (bounces) vers la boîte dédiée bounce@
+            //    Sans ce header, les NDR partent à l'adresse From (indésirable)
+            $bounceEmail = config('services.bounce_imap.address', env('BOUNCE_EMAIL'));
+            if ($bounceEmail) {
+                $message->getEnvelope()?->setSender(new \Symfony\Component\Mime\Address($bounceEmail));
+                $headers->addTextHeader('Return-Path', "<{$bounceEmail}>");
+            }
+
+            // 2. Désinscription sécurisée en 1 clic (respect des critères anti-spam sans forcer l'onglet Promotions)
             $headers->addTextHeader('List-Unsubscribe', "<mailto:Contact@caei-afri.com?subject=Unsubscribe>, <{$unsubscribeUrl}>");
             $headers->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
 
-            // 2. Empêche les réponses automatiques / Out of Office en cascade
+            // 3. Empêche les réponses automatiques / Out of Office en cascade
             $headers->addTextHeader('X-Auto-Response-Suppress', 'OOF, AutoReply');
         });
 

@@ -24,6 +24,9 @@ class Contact extends Model
         'prospect_status',
         'unsubscribed_at',
         'bounced_at',
+        'hard_bounce',
+        'soft_bounce_count',
+        'last_bounce_reason',
         'notes',
         'last_interaction',
         'next_followup_date',
@@ -31,13 +34,16 @@ class Contact extends Model
         'import_log_id',
     ];
 
+
     protected function casts(): array
     {
         return [
-            'unsubscribed_at' => 'datetime',
-            'bounced_at' => 'datetime',
-            'last_interaction' => 'datetime',
-            'next_followup_date' => 'datetime',
+            'unsubscribed_at'   => 'datetime',
+            'bounced_at'        => 'datetime',
+            'last_interaction'  => 'datetime',
+            'next_followup_date'=> 'datetime',
+            'hard_bounce'       => 'boolean',
+            'soft_bounce_count' => 'integer',
         ];
     }
 
