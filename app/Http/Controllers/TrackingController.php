@@ -9,9 +9,16 @@ use Illuminate\Support\Facades\DB;
 
 class TrackingController extends Controller
 {
-    public function open($log_id)
+    /**
+     * Enregistre une ouverture d'email via le pixel 1x1.
+     *
+     * Route : GET /track/open/{token}
+     * Le {token} est un UUID opaque — impossible à itérer ou deviner.
+     */
+    public function open(string $token)
     {
-        $emailLog = EmailLog::with('contact')->find($log_id);
+        $emailLog = EmailLog::findByToken($token);
+
         if ($emailLog) {
             $updates = [];
 
@@ -32,9 +39,9 @@ class TrackingController extends Controller
             }
         }
 
-        // 1x1 transparent GIF
+        // 1x1 transparent GIF — répondre immédiatement même si log introuvable
         $pixel = base64_decode('R0lGODlhAQABAJAAAP8AAAAAACH5BAUQAAAALAAAAAABAAEAAAICBAEAOw==');
-        
+
         return response($pixel, 200)
             ->header('Content-Type', 'image/gif')
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -45,18 +52,22 @@ class TrackingController extends Controller
     /**
      * Enregistre un clic et redirige vers l'URL cible.
      *
-     * URL pattern : /track/click/{log_id}?url={encoded_url}
+     * Route : GET /track/click/{token}?url={encoded_url}
+     * Le {token} est un UUID opaque — impossible à itérer ou deviner.
      */
-    public function click(Request $request, $log_id)
+    public function click(Request $request, string $token)
     {
         $destination = $request->query('url', '/');
 
         // Valider que c'est une URL absolue (évite les redirections malveillantes)
-        if (! filter_var($destination, FILTER_VALIDATE_URL) || ! in_array(parse_url($destination, PHP_URL_SCHEME), ['http', 'https'])) {
-            return redirect()->away('https://' . config('app.url'));
+        if (
+            ! filter_var($destination, FILTER_VALIDATE_URL)
+            || ! in_array(parse_url($destination, PHP_URL_SCHEME), ['http', 'https'])
+        ) {
+            return redirect(config('app.url'));
         }
 
-        $emailLog = EmailLog::with('contact')->find($log_id);
+        $emailLog = EmailLog::findByToken($token);
 
         if ($emailLog) {
             $updates = [];

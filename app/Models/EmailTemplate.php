@@ -149,44 +149,46 @@ class EmailTemplate extends Model
             return '';
         }
 
+        $token = $extraVariables['tracking_token'] ?? null;
+
         $decoded = json_decode($trimmed, true);
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
             $blocks = $decoded['blocks'] ?? $decoded;
             if (is_array($blocks) && $blocks !== []) {
                 $html = self::renderBlocks($blocks, $contact, $extraVariables);
-                return self::wrapLinksForTracking($html, $extraVariables['email_log_id'] ?? null);
+                return self::wrapLinksForTracking($html, $token);
             }
         }
 
         if (preg_match('/^\<\s*[^>]+>/', $trimmed) || str_contains($trimmed, '<p') || str_contains($trimmed, '<div') || str_contains($trimmed, '<table')) {
             $html = self::sanitizeContent(CampaignController::personnaliser($trimmed, $contact, $extraVariables));
-            return self::wrapLinksForTracking($html, $extraVariables['email_log_id'] ?? null);
+            return self::wrapLinksForTracking($html, $token);
         }
 
         $html = '<div style="font-family:Arial, sans-serif; line-height:1.7; color:#0f172a;">' . nl2br(e(CampaignController::personnaliser($trimmed, $contact, $extraVariables))) . '</div>';
-        return self::wrapLinksForTracking($html, $extraVariables['email_log_id'] ?? null);
+        return self::wrapLinksForTracking($html, $token);
     }
 
     /**
      * Remplace tous les href= dans le HTML par des URLs de tracking.
      *
      * Les liens de désinscription, les ancres (#) et les liens mailto: sont exclus.
-     * Fonctionne uniquement si un email_log_id est fourni.
+     * Fonctionne uniquement si un tracking_token (UUID) est fourni.
      *
-     * @param  string   $html       Le contenu HTML de l'email
-     * @param  int|null $emailLogId L'ID du log email pour le tracking
-     * @return string   Le HTML avec les liens wrappés
+     * @param  string      $html          Le contenu HTML de l'email
+     * @param  string|null $trackingToken Le token UUID opaque du log email
+     * @return string      Le HTML avec les liens wrappés
      */
-    public static function wrapLinksForTracking(string $html, ?int $emailLogId): string
+    public static function wrapLinksForTracking(string $html, ?string $trackingToken): string
     {
-        if (! $emailLogId || trim($html) === '') {
+        if (! $trackingToken || trim($html) === '') {
             return $html;
         }
 
         // Regex : capture href="..." ou href='...'
         return preg_replace_callback(
             '/href\s*=\s*(["\'])(.*?)\1/i',
-            function (array $matches) use ($emailLogId) {
+            function (array $matches) use ($trackingToken) {
                 $quote = $matches[1];
                 $url   = $matches[2];
 
@@ -197,12 +199,12 @@ class EmailTemplate extends Model
                     || str_starts_with($url, 'tel:')
                     || str_starts_with($url, 'javascript:')
                     || str_contains($url, 'unsubscribe')
-                    || str_contains($url, 'contact.unsubscribe')
+                    || str_contains($url, '/track/') // éviter de wrapper deux fois
                 ) {
                     return $matches[0]; // retourner intact
                 }
 
-                $trackingUrl = route('track.click', ['log_id' => $emailLogId]) . '?url=' . urlencode($url);
+                $trackingUrl = route('track.click', ['token' => $trackingToken]) . '?url=' . urlencode($url);
 
                 return 'href=' . $quote . $trackingUrl . $quote;
             },

@@ -4,15 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class EmailLog extends Model
 {
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_SENT = 'sent';
+    public const STATUS_PENDING   = 'pending';
+    public const STATUS_SENT      = 'sent';
     public const STATUS_DELIVERED = 'delivered';
-    public const STATUS_BOUNCED = 'bounced';
-    public const STATUS_INVALID = 'invalid';
-    public const STATUS_FAILED = 'failed';
+    public const STATUS_BOUNCED   = 'bounced';
+    public const STATUS_INVALID   = 'invalid';
+    public const STATUS_FAILED    = 'failed';
 
     public static function statuses(): array
     {
@@ -29,6 +30,7 @@ class EmailLog extends Model
     protected $fillable = [
         'campaign_id',
         'contact_id',
+        'tracking_token',
         'status',
         'retry_count',
         'opened',
@@ -36,7 +38,7 @@ class EmailLog extends Model
         'clicked_at',
         'clicked_count',
         'error_message',
-        'sent_at'
+        'sent_at',
     ];
 
     protected function casts(): array
@@ -49,6 +51,26 @@ class EmailLog extends Model
             'retry_count'   => 'integer',
             'sent_at'       => 'datetime',
         ];
+    }
+
+    /**
+     * Auto-génère un UUID unique à la création du log si absent.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $log) {
+            if (empty($log->tracking_token)) {
+                $log->tracking_token = (string) Str::uuid();
+            }
+        });
+    }
+
+    /**
+     * Trouve un log par son token de tracking (opaque, non-séquentiel).
+     */
+    public static function findByToken(string $token): ?self
+    {
+        return static::with('contact')->where('tracking_token', $token)->first();
     }
 
     /**
