@@ -22,3 +22,9 @@ Schedule::command('campaigns:dispatch-scheduled')
 Schedule::command('queue:work database --queue=emails,default --stop-when-empty --tries=3 --timeout=55 --max-jobs=50 --memory=128')
     ->everyMinute()
     ->withoutOverlapping();
+
+// Traitement des bounces IMAP (OVH — toutes les 15 minutes)
+Schedule::command('bounces:process')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
