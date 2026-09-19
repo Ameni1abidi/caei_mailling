@@ -19,6 +19,7 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::get('/track/open/{log_id}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
+Route::get('/track/click/{log_id}', [App\Http\Controllers\TrackingController::class, 'click'])->name('track.click');
 Route::get('/unsubscribe/{email}', [App\Http\Controllers\UnsubscribeController::class, 'unsubscribe'])->name('contact.unsubscribe');
 
 // Route Cron sécurisée appelée par cron-job.org pour traiter la file d'attente automatiquement
