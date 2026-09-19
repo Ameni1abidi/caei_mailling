@@ -29,6 +29,7 @@ class CampaignMail extends Mailable
             'campaign'      => $campaign,
             'nom_seminaire' => $campaign->nom,
             'date'          => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
+            'email_log_id'  => $emailLogId,  // Nécessaire pour le tracking de clics
         ];
 
         $this->contenuPersonnalise = \App\Models\EmailTemplate::renderContent($campaign->contenu, $contact, $context);

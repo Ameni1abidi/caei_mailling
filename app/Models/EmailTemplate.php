@@ -153,15 +153,61 @@ class EmailTemplate extends Model
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
             $blocks = $decoded['blocks'] ?? $decoded;
             if (is_array($blocks) && $blocks !== []) {
-                return self::renderBlocks($blocks, $contact, $extraVariables);
+                $html = self::renderBlocks($blocks, $contact, $extraVariables);
+                return self::wrapLinksForTracking($html, $extraVariables['email_log_id'] ?? null);
             }
         }
 
-        if (preg_match('/^<\s*[^>]+>/', $trimmed) || str_contains($trimmed, '<p') || str_contains($trimmed, '<div') || str_contains($trimmed, '<table')) {
-            return self::sanitizeContent(CampaignController::personnaliser($trimmed, $contact, $extraVariables));
+        if (preg_match('/^\<\s*[^>]+>/', $trimmed) || str_contains($trimmed, '<p') || str_contains($trimmed, '<div') || str_contains($trimmed, '<table')) {
+            $html = self::sanitizeContent(CampaignController::personnaliser($trimmed, $contact, $extraVariables));
+            return self::wrapLinksForTracking($html, $extraVariables['email_log_id'] ?? null);
         }
 
-        return '<div style="font-family:Arial, sans-serif; line-height:1.7; color:#0f172a;">' . nl2br(e(CampaignController::personnaliser($trimmed, $contact, $extraVariables))) . '</div>';
+        $html = '<div style="font-family:Arial, sans-serif; line-height:1.7; color:#0f172a;">' . nl2br(e(CampaignController::personnaliser($trimmed, $contact, $extraVariables))) . '</div>';
+        return self::wrapLinksForTracking($html, $extraVariables['email_log_id'] ?? null);
+    }
+
+    /**
+     * Remplace tous les href= dans le HTML par des URLs de tracking.
+     *
+     * Les liens de désinscription, les ancres (#) et les liens mailto: sont exclus.
+     * Fonctionne uniquement si un email_log_id est fourni.
+     *
+     * @param  string   $html       Le contenu HTML de l'email
+     * @param  int|null $emailLogId L'ID du log email pour le tracking
+     * @return string   Le HTML avec les liens wrappés
+     */
+    public static function wrapLinksForTracking(string $html, ?int $emailLogId): string
+    {
+        if (! $emailLogId || trim($html) === '') {
+            return $html;
+        }
+
+        // Regex : capture href="..." ou href='...'
+        return preg_replace_callback(
+            '/href\s*=\s*(["\'])(.*?)\1/i',
+            function (array $matches) use ($emailLogId) {
+                $quote = $matches[1];
+                $url   = $matches[2];
+
+                // Exclure les ancres, mailto, tel, javascript et les liens de désinscription
+                if (
+                    str_starts_with($url, '#')
+                    || str_starts_with($url, 'mailto:')
+                    || str_starts_with($url, 'tel:')
+                    || str_starts_with($url, 'javascript:')
+                    || str_contains($url, 'unsubscribe')
+                    || str_contains($url, 'contact.unsubscribe')
+                ) {
+                    return $matches[0]; // retourner intact
+                }
+
+                $trackingUrl = route('track.click', ['log_id' => $emailLogId]) . '?url=' . urlencode($url);
+
+                return 'href=' . $quote . $trackingUrl . $quote;
+            },
+            $html
+        );
     }
 
     public static function sanitizeContent(string $content): string

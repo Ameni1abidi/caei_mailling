@@ -33,6 +33,8 @@ class EmailLog extends Model
         'retry_count',
         'opened',
         'clicked',
+        'clicked_at',
+        'clicked_count',
         'error_message',
         'sent_at'
     ];
@@ -40,10 +42,12 @@ class EmailLog extends Model
     protected function casts(): array
     {
         return [
-            'opened' => 'boolean',
-            'clicked' => 'boolean',
-            'retry_count' => 'integer',
-            'sent_at' => 'datetime',
+            'opened'        => 'boolean',
+            'clicked'       => 'boolean',
+            'clicked_at'    => 'datetime',
+            'clicked_count' => 'integer',
+            'retry_count'   => 'integer',
+            'sent_at'       => 'datetime',
         ];
     }
 
