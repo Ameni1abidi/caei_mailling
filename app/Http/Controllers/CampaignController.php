@@ -13,7 +13,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\SmtpSetting;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+
 
 class CampaignController extends Controller
 {
@@ -388,14 +390,15 @@ class CampaignController extends Controller
                 return;
             }
 
-            // Build bulk insert payload
+            // Build bulk insert payload (with unique tracking token per log)
             foreach ($newContacts as $contact) {
                 $logsToInsert[] = [
-                    'campaign_id' => $campaign->id,
-                    'contact_id'  => $contact->id,
-                    'status'      => EmailLog::STATUS_PENDING,
-                    'created_at'  => $now,
-                    'updated_at'  => $now,
+                    'campaign_id'    => $campaign->id,
+                    'contact_id'     => $contact->id,
+                    'tracking_token' => (string) Str::uuid(),
+                    'status'         => EmailLog::STATUS_PENDING,
+                    'created_at'     => $now,
+                    'updated_at'     => $now,
                 ];
             }
 

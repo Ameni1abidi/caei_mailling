@@ -143,9 +143,9 @@
         </tr>
     </table>
 
-    <!-- Pixel d'ouverture discret -->
-    @if(isset($emailLogId) && $emailLogId)
-        <img src="{{ route('track.open', ['log_id' => $emailLogId]) }}" width="1" height="1" border="0" alt="" style="width:1px!important;height:1px!important;border:0!important;margin:0!important;padding:0!important;outline:none!important;" />
+    <!-- Pixel d'ouverture discret — UUID opaque, non-itérable -->
+    @if(isset($trackingToken) && $trackingToken)
+        <img src="{{ route('track.open', ['token' => $trackingToken]) }}" width="1" height="1" border="0" alt="" style="width:1px!important;height:1px!important;border:0!important;margin:0!important;padding:0!important;outline:none!important;" />
     @endif
 </body>
 </html>

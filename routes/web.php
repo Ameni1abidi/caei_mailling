@@ -18,9 +18,11 @@ Route::get('/', function () {
         : redirect()->route('login');
 })->name('welcome');
 
-Route::get('/track/open/{log_id}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
-Route::get('/track/click/{log_id}', [App\Http\Controllers\TrackingController::class, 'click'])->name('track.click');
+// Routes publiques de tracking — utilisent un UUID opaque (non-séquentiel) pour la sécurité
+Route::get('/track/open/{token}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
+Route::get('/track/click/{token}', [App\Http\Controllers\TrackingController::class, 'click'])->name('track.click');
 Route::get('/unsubscribe/{email}', [App\Http\Controllers\UnsubscribeController::class, 'unsubscribe'])->name('contact.unsubscribe');
+
 
 // Route Cron sécurisée appelée par cron-job.org pour traiter la file d'attente automatiquement
 Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
