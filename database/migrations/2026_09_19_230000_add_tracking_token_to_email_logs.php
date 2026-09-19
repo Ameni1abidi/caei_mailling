@@ -13,27 +13,36 @@ return new class extends Migration
      *
      * Avant : /track/open/1  → itérable par un attaquant
      * Après : /track/open/a3f8c21d-...  → impossible à deviner
+     *
+     * Migration idempotente : vérifie l'existence des colonnes avant d'agir.
      */
     public function up(): void
     {
-        Schema::table('email_logs', function (Blueprint $table) {
-            $table->uuid('tracking_token')
-                  ->nullable()
-                  ->unique()
-                  ->after('id')
-                  ->comment('Token UUID opaque pour les URLs de tracking ouverture/clic');
-        });
+        // Ajouter la colonne uniquement si elle n'existe pas encore
+        // (protection contre les interruptions de migration précédentes)
+        if (! Schema::hasColumn('email_logs', 'tracking_token')) {
+            Schema::table('email_logs', function (Blueprint $table) {
+                $table->uuid('tracking_token')
+                      ->nullable()
+                      ->unique()
+                      ->after('id')
+                      ->comment('Token UUID opaque pour les URLs de tracking ouverture/clic');
+            });
+        }
 
-        // Remplir les logs existants avec un UUID unique chacun
-        DB::table('email_logs')->orderBy('id')->chunk(500, function ($rows) {
-            foreach ($rows as $row) {
-                DB::table('email_logs')
-                    ->where('id', $row->id)
-                    ->update(['tracking_token' => (string) Str::uuid()]);
-            }
-        });
+        // Remplir les logs existants qui n'ont pas encore de token
+        DB::table('email_logs')
+            ->whereNull('tracking_token')
+            ->orderBy('id')
+            ->chunk(500, function ($rows) {
+                foreach ($rows as $row) {
+                    DB::table('email_logs')
+                        ->where('id', $row->id)
+                        ->update(['tracking_token' => (string) Str::uuid()]);
+                }
+            });
 
-        // Maintenant qu'ils sont tous remplis, on peut passer NOT NULL
+        // Passer NOT NULL maintenant que tout est rempli
         Schema::table('email_logs', function (Blueprint $table) {
             $table->uuid('tracking_token')->nullable(false)->change();
         });
