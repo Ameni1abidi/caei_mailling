@@ -71,7 +71,6 @@ class CampaignMail extends Mailable
             //    Sans ce header, les NDR partent à l'adresse From (indésirable)
             $bounceEmail = config('services.bounce_imap.address', env('BOUNCE_EMAIL'));
             if ($bounceEmail) {
-                $message->getEnvelope()?->setSender(new \Symfony\Component\Mime\Address($bounceEmail));
                 $headers->addTextHeader('Return-Path', "<{$bounceEmail}>");
             }
 
