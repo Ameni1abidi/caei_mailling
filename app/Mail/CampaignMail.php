@@ -71,7 +71,7 @@ class CampaignMail extends Mailable
             //    Sans ce header, les NDR partent à l'adresse From (indésirable)
             $bounceEmail = config('services.bounce_imap.address', env('BOUNCE_EMAIL'));
             if ($bounceEmail) {
-                $headers->addTextHeader('Return-Path', "<{$bounceEmail}>");
+                $headers->addPathHeader('Return-Path', $bounceEmail);
             }
 
             // 2. Désinscription sécurisée en 1 clic (respect des critères anti-spam sans forcer l'onglet Promotions)
