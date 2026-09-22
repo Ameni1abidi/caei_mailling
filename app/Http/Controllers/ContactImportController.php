@@ -303,11 +303,12 @@ class ContactImportController extends Controller
                 ->with('error', 'Mapping invalide.');
         }
 
-        // Marquer comme en attente et envoyer le job
+        // Marquer comme en attente et lancer l'import immédiatement (synchrone)
+        // Sur OVH mutualisé, le cron a un timeout de 55s — trop court pour les gros fichiers.
+        // dispatchSync() exécute le job dans la même requête HTTP (timeout PHP = 600s).
         $importLog->update(['status' => 'pending']);
 
-        ProcessContactImport::dispatch($importLog->id)
-            ->onQueue('default');
+        ProcessContactImport::dispatchSync($importLog->id);
 
         // Nettoyer la session d'analyse (garder la catégorie cible pour progress/result)
         session()->forget(["import_{$importLogId}_analysis", "import_{$importLogId}_mapping"]);
