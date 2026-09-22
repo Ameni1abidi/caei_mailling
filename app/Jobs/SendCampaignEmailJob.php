@@ -189,22 +189,38 @@ class SendCampaignEmailJob implements ShouldQueue
     {
         $message = strtolower($exception->getMessage());
 
-        if (str_contains($message, 'invalid')
-            || str_contains($message, 'recipient address rejected')
+        // ── Détection rate limit / quota AVANT les bounces ──────────────────
+        // Ces erreurs sont TEMPORAIRES : OVH, Gmail, etc. limitent le débit.
+        // Il ne faut PAS les marquer en bounced — l'adresse destinataire est valide.
+        if (str_contains($message, 'quota exceeded')
+            || str_contains($message, 'rate limit')
+            || str_contains($message, 'too many')
+            || str_contains($message, 'messages per hour')
+            || str_contains($message, 'try again later')
+            || str_contains($message, 'temporarily')
+            || str_contains($message, 'try later')
+            || str_contains($message, 'please retry')
+            || str_contains($message, 'slow down')) {
+            return EmailLog::STATUS_FAILED; // temporaire → sera retenté
+        }
+
+        // ── Adresses définitivement invalides ────────────────────────────────
+        if (str_contains($message, 'recipient address rejected')
             || str_contains($message, 'invalid address')
             || str_contains($message, 'user unknown')
             || str_contains($message, 'mailbox unavailable')
             || str_contains($message, 'address rejected')
+            || str_contains($message, 'no such user')
+            || str_contains($message, 'does not exist')
             || str_contains($message, 'format error')) {
             return EmailLog::STATUS_INVALID;
         }
 
+        // ── Hard bounces (rejet permanent du destinataire) ───────────────────
         if (str_contains($message, 'bounce')
-            || str_contains($message, '550')
-            || str_contains($message, '5.1')
-            || str_contains($message, '5.7')
+            || str_contains($message, '5.1.1')
+            || str_contains($message, '5.1.2')
             || str_contains($message, 'undeliverable')
-            || str_contains($message, 'mailbox full')
             || str_contains($message, 'recipient not found')) {
             return EmailLog::STATUS_BOUNCED;
         }
