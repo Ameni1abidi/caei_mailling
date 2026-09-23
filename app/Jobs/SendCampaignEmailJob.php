@@ -21,7 +21,14 @@ class SendCampaignEmailJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
-    public int $backoff = 30;
+
+    /**
+     * Backoff escalatoire : 10min → 20min → 30min
+     * Raison : si OVH bloque pour quota (200/h), réessayer après 30s heurte
+     * le même mur. Avec 10 minutes, la fenêtre glissante d'1h s'est écoulée
+     * et le quota est libéré → les retries aboutissent.
+     */
+    public array $backoff = [600, 1200, 1800];
     public bool $deleteWhenMissingModels = true;
 
     /**
