@@ -181,35 +181,9 @@ class EmailTemplate extends Model
      */
     public static function wrapLinksForTracking(string $html, ?string $trackingToken): string
     {
-        if (! $trackingToken || trim($html) === '') {
-            return $html;
-        }
-
-        // Regex : capture href="..." ou href='...'
-        return preg_replace_callback(
-            '/href\s*=\s*(["\'])(.*?)\1/i',
-            function (array $matches) use ($trackingToken) {
-                $quote = $matches[1];
-                $url   = $matches[2];
-
-                // Exclure les ancres, mailto, tel, javascript et les liens de désinscription
-                if (
-                    str_starts_with($url, '#')
-                    || str_starts_with($url, 'mailto:')
-                    || str_starts_with($url, 'tel:')
-                    || str_starts_with($url, 'javascript:')
-                    || str_contains($url, 'unsubscribe')
-                    || str_contains($url, '/track/') // éviter de wrapper deux fois
-                ) {
-                    return $matches[0]; // retourner intact
-                }
-
-                $trackingUrl = route('track.click', ['token' => $trackingToken]) . '?url=' . urlencode($url);
-
-                return 'href=' . $quote . $trackingUrl . $quote;
-            },
-            $html
-        );
+        // Tracking de clics désactivé
+        return $html;
+    }
     }
 
     public static function sanitizeContent(string $content): string

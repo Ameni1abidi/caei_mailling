@@ -17,26 +17,30 @@ class TrackingController extends Controller
      */
     public function open(string $token)
     {
-        $emailLog = EmailLog::findByToken($token);
+        try {
+            $emailLog = EmailLog::findByToken($token);
 
-        if ($emailLog) {
-            $updates = [];
+            if ($emailLog) {
+                $updates = [];
 
-            if (! $emailLog->opened) {
-                $updates['opened'] = true;
+                if (! $emailLog->opened) {
+                    $updates['opened'] = true;
+                }
+
+                if ($emailLog->status === EmailLog::STATUS_SENT) {
+                    $updates['status'] = EmailLog::STATUS_DELIVERED;
+                }
+
+                if (! empty($updates)) {
+                    $emailLog->update($updates);
+                }
+
+                if ($emailLog->contact) {
+                    $emailLog->contact->advanceStatusTo(Contact::STATUS_EMAIL_OUVERT);
+                }
             }
-
-            if ($emailLog->status === EmailLog::STATUS_SENT) {
-                $updates['status'] = EmailLog::STATUS_DELIVERED;
-            }
-
-            if (! empty($updates)) {
-                $emailLog->update($updates);
-            }
-
-            if ($emailLog->contact) {
-                $emailLog->contact->advanceStatusTo(Contact::STATUS_EMAIL_OUVERT);
-            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Tracking open ignored due to DB error: " . $e->getMessage());
         }
 
         // 1x1 transparent GIF — répondre immédiatement même si log introuvable
@@ -67,36 +71,40 @@ class TrackingController extends Controller
             return redirect(config('app.url'));
         }
 
-        $emailLog = EmailLog::findByToken($token);
+        try {
+            $emailLog = EmailLog::findByToken($token);
 
-        if ($emailLog) {
-            $updates = [];
+            if ($emailLog) {
+                $updates = [];
 
-            // Marquer comme cliqué (premier clic uniquement)
-            if (! $emailLog->clicked) {
-                $updates['clicked']    = true;
-                $updates['clicked_at'] = now();
+                // Marquer comme cliqué (premier clic uniquement)
+                if (! $emailLog->clicked) {
+                    $updates['clicked']    = true;
+                    $updates['clicked_at'] = now();
+                }
+
+                // Toujours incrémenter le compteur de clics
+                $updates['clicked_count'] = DB::raw('clicked_count + 1');
+
+                // Si le mail n'était pas encore ouvert, le marquer comme ouvert aussi
+                if (! $emailLog->opened) {
+                    $updates['opened'] = true;
+                }
+
+                // Marquer comme délivré si encore en statut "sent"
+                if ($emailLog->status === EmailLog::STATUS_SENT) {
+                    $updates['status'] = EmailLog::STATUS_DELIVERED;
+                }
+
+                $emailLog->update($updates);
+
+                // Avancer le statut prospect
+                if ($emailLog->contact) {
+                    $emailLog->contact->advanceStatusTo(Contact::STATUS_EMAIL_OUVERT);
+                }
             }
-
-            // Toujours incrémenter le compteur de clics
-            $updates['clicked_count'] = DB::raw('clicked_count + 1');
-
-            // Si le mail n'était pas encore ouvert, le marquer comme ouvert aussi
-            if (! $emailLog->opened) {
-                $updates['opened'] = true;
-            }
-
-            // Marquer comme délivré si encore en statut "sent"
-            if ($emailLog->status === EmailLog::STATUS_SENT) {
-                $updates['status'] = EmailLog::STATUS_DELIVERED;
-            }
-
-            $emailLog->update($updates);
-
-            // Avancer le statut prospect
-            if ($emailLog->contact) {
-                $emailLog->contact->advanceStatusTo(Contact::STATUS_EMAIL_OUVERT);
-            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Tracking click ignored due to DB error: " . $e->getMessage());
         }
 
         return redirect()->away($destination);
