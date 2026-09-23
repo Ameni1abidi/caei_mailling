@@ -355,10 +355,10 @@
                     <div class="pt-5 border-t border-slate-100 mt-5">
                         <div class="flex items-center justify-between text-xs mb-2">
                             <span class="text-slate-600 font-semibold">Capacité cible de la base</span>
-                            <span class="font-bold text-slate-900">{{ number_format($totalContacts) }} / 50 000</span>
+                            <span class="font-bold text-slate-900">{{ number_format($totalContacts) }} / 200 000</span>
                         </div>
                         @php
-                            $capPercent = min(100, round(($totalContacts / 50000) * 100, 1));
+                            $capPercent = min(100, round(($totalContacts / 200000) * 100, 1));
                         @endphp
                         <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
                             <div class="h-full bg-gradient-to-r from-[#D9822B] via-[#C57A1E] to-[#B86D18] rounded-full transition-all duration-500" style="width: {{ $capPercent }}%"></div>
