@@ -101,12 +101,11 @@ class DispatchScheduledCampaignsCommand extends Command
             $logsToInsert = [];
             foreach ($newContacts as $contact) {
                 $logsToInsert[] = [
-                    'campaign_id'    => $campaign->id,
-                    'contact_id'     => $contact->id,
-                    'tracking_token' => (string) \Illuminate\Support\Str::uuid(),
-                    'status'         => EmailLog::STATUS_PENDING,
-                    'created_at'     => $now,
-                    'updated_at'     => $now,
+                    'campaign_id' => $campaign->id,
+                    'contact_id'  => $contact->id,
+                    'status'      => EmailLog::STATUS_PENDING,
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
                 ];
             }
 
