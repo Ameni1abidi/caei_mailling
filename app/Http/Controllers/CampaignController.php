@@ -266,14 +266,23 @@ class CampaignController extends Controller
                 : Contact::query();
         }
 
-        $contactsDisponibles = $contactsQuery->orderBy('nom')->get(['contacts.id', 'nom', 'prenom', 'email', 'entreprise', 'fonction', 'pays']);
+        $contactsDisponibles = $contactsQuery->orderBy('nom')->get(['id', 'nom', 'prenom', 'email', 'entreprise', 'fonction', 'pays']);
 
         if ($contactsDisponibles->isEmpty()) {
-            return back()->with('error', 'Aucun contact disponible pour la prévisualisation.');
+            $dummyContact = new Contact([
+                'id'         => 0,
+                'nom'        => 'Nom',
+                'prenom'     => 'Prénom',
+                'email'      => 'exemple@caei-afri.com',
+                'entreprise' => 'CAEI Partner',
+                'fonction'   => 'Responsable / Directeur',
+                'pays'       => 'Tunisie / International',
+            ]);
+            $contactsDisponibles = collect([$dummyContact]);
         }
 
         $contact = $request->filled('contact_id')
-            ? Contact::findOrFail($request->contact_id)
+            ? (Contact::find($request->contact_id) ?? $contactsDisponibles->first())
             : $contactsDisponibles->first();
 
         $context = [
