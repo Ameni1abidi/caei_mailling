@@ -34,28 +34,44 @@ Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
     @set_time_limit(120);
 
     // 1. Déclencher les campagnes programmées
-    \Illuminate\Support\Facades\Artisan::call('campaigns:dispatch-scheduled');
+    try {
+        \Illuminate\Support\Facades\Artisan::call('campaigns:dispatch-scheduled');
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("Cron dispatch-scheduled error: " . $e->getMessage());
+    }
 
     // 2. Exécuter le scheduler Laravel (relances auto)
-    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+    try {
+        \Illuminate\Support\Facades\Artisan::call('schedule:run');
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("Cron schedule:run error: " . $e->getMessage());
+    }
 
     // 3. Auto-remplissage des messages d'erreur explicites pour les logs échoués
-    \Illuminate\Support\Facades\DB::table('email_logs')
-        ->whereIn('status', ['failed', 'bounced', 'invalid'])
-        ->where(function ($q) {
-            $q->whereNull('error_message')->orWhere('error_message', '');
-        })
-        ->update(['error_message' => 'Échec de connexion SMTP / Rejet du serveur de messagerie ou quota dépassé']);
+    try {
+        \Illuminate\Support\Facades\DB::table('email_logs')
+            ->whereIn('status', ['failed', 'bounced', 'invalid'])
+            ->where(function ($q) {
+                $q->whereNull('error_message')->orWhere('error_message', '');
+            })
+            ->update(['error_message' => 'Échec de connexion SMTP / Rejet du serveur de messagerie ou quota dépassé']);
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::warning("Impossible de mettre à jour error_message dans cron/run: " . $e->getMessage());
+    }
 
     // 4. Traiter immédiatement la file d'attente
-    \Illuminate\Support\Facades\Artisan::call('queue:work', [
-        'connection' => 'database',
-        '--queue' => 'emails,default',
-        '--stop-when-empty' => true,
-        '--max-jobs' => 50,
-        '--tries' => 3,
-        '--timeout' => 55,
-    ]);
+    try {
+        \Illuminate\Support\Facades\Artisan::call('queue:work', [
+            'connection' => 'database',
+            '--queue' => 'emails,default',
+            '--stop-when-empty' => true,
+            '--max-jobs' => 50,
+            '--tries' => 3,
+            '--timeout' => 55,
+        ]);
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("Cron queue:work error: " . $e->getMessage());
+    }
 
     return response()->json([
         'status' => 'success',
