@@ -133,7 +133,7 @@ class CampaignController extends Controller
         \Illuminate\Support\Facades\Gate::authorize('retry', $campaign);
 
         $failedLogs = EmailLog::where('campaign_id', $campaign->id)
-            ->whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED])
+            ->where('status', EmailLog::STATUS_FAILED) // seulement FAILED — pas bounced/invalid
             ->with('contact:id,email')
             ->get();
 
@@ -143,7 +143,9 @@ class CampaignController extends Controller
 
         $smtp = $campaign->resolveSmtpSetting();
         $rateLimit = max(1, (int) ($smtp?->rate_limit ?? 3));
-        $delayBetweenEmails = (int) ceil(60 / $rateLimit);
+        // Délai doublé pour les relances manuelles — évite le burst sur le quota SMTP
+        // (les jobs précédents ont déjà saturé le quota, espacer davantage)
+        $delayBetweenEmails = (int) ceil(60 / $rateLimit) * 2;
 
         $queueConnection = $this->resolveQueueConnection();
 
