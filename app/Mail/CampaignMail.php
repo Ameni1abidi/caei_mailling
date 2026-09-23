@@ -18,26 +18,19 @@ class CampaignMail extends Mailable
     public Campaign $campaign;
     public Contact $contact;
     public ?int $emailLogId;
-    public ?string $trackingToken;
     public string $contenuPersonnalise;
     public string $objetPersonnalise;
 
     public function __construct(Campaign $campaign, Contact $contact, ?int $emailLogId = null)
     {
-        $this->campaign    = $campaign;
-        $this->contact     = $contact;
-        $this->emailLogId  = $emailLogId;
-
-        // Récupérer le tracking_token depuis le log pour des URLs sécurisées (UUID)
-        $this->trackingToken = $emailLogId
-            ? EmailLog::where('id', $emailLogId)->value('tracking_token')
-            : null;
+        $this->campaign   = $campaign;
+        $this->contact    = $contact;
+        $this->emailLogId = $emailLogId;
 
         $context = [
-            'campaign'        => $campaign,
-            'nom_seminaire'   => $campaign->nom,
-            'date'            => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
-            'tracking_token'  => $this->trackingToken,  // UUID opaque pour le tracking de clics
+            'campaign'      => $campaign,
+            'nom_seminaire' => $campaign->nom,
+            'date'          => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
         ];
 
         $this->contenuPersonnalise = \App\Models\EmailTemplate::renderContent($campaign->contenu, $contact, $context);
@@ -52,7 +45,6 @@ class CampaignMail extends Mailable
         // Configuration Multipart/Alternative : HTML + Version texte brut (indispensable anti-spam)
         $mail = $this->subject($this->objetPersonnalise)
             ->view('emails.campaign', [
-                'trackingToken'      => $this->trackingToken,
                 'contact'            => $this->contact,
                 'objetPersonnalise'  => $this->objetPersonnalise,
                 'contenuPersonnalise'=> $this->contenuPersonnalise,
@@ -63,22 +55,15 @@ class CampaignMail extends Mailable
                 'unsubscribeUrl' => $unsubscribeUrl,
             ]);
 
-        // En-têtes optimisés pour délivrabilité en boîte Principale (sans étiquette bulk Promotions)
+        // En-têtes optimisés pour délivrabilité en boîte Principale
         $mail->withSymfonyMessage(function ($message) use ($unsubscribeUrl) {
             $headers = $message->getHeaders();
 
-            // 1. Return-Path : redirige les NDR (bounces) vers la boîte dédiée bounce@
-            //    Sans ce header, les NDR partent à l'adresse From (indésirable)
-            $bounceEmail = config('services.bounce_imap.address', env('BOUNCE_EMAIL'));
-            if ($bounceEmail) {
-                $headers->addPathHeader('Return-Path', $bounceEmail);
-            }
-
-            // 2. Désinscription sécurisée en 1 clic (respect des critères anti-spam sans forcer l'onglet Promotions)
+            // 1. Désinscription sécurisée en 1 clic
             $headers->addTextHeader('List-Unsubscribe', "<mailto:Contact@caei-afri.com?subject=Unsubscribe>, <{$unsubscribeUrl}>");
             $headers->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
 
-            // 3. Empêche les réponses automatiques / Out of Office en cascade
+            // 2. Empêche les réponses automatiques / Out of Office en cascade
             $headers->addTextHeader('X-Auto-Response-Suppress', 'OOF, AutoReply');
         });
 

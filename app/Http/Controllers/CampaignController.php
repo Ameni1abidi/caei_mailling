@@ -404,12 +404,11 @@ class CampaignController extends Controller
             // Build bulk insert payload (with unique tracking token per log)
             foreach ($newContacts as $contact) {
                 $logsToInsert[] = [
-                    'campaign_id'    => $campaign->id,
-                    'contact_id'     => $contact->id,
-                    'tracking_token' => (string) Str::uuid(),
-                    'status'         => EmailLog::STATUS_PENDING,
-                    'created_at'     => $now,
-                    'updated_at'     => $now,
+                    'campaign_id' => $campaign->id,
+                    'contact_id'  => $contact->id,
+                    'status'      => EmailLog::STATUS_PENDING,
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
                 ];
             }
 
