@@ -141,9 +141,9 @@ class EmailTemplate extends Model
         return $html;
     }
 
-    public static function renderContent(string $content, ?Contact $contact = null, array $extraVariables = []): string
+    public static function renderContent(?string $content, ?Contact $contact = null, array $extraVariables = []): string
     {
-        $trimmed = trim($content);
+        $trimmed = trim((string) ($content ?? ''));
 
         if ($trimmed === '') {
             return '';

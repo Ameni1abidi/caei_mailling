@@ -33,7 +33,7 @@ class CampaignPolicy
      */
     public function view(User $user, Campaign $campaign): bool
     {
-        return $campaign->isOwnedBy($user);
+        return true;
     }
 
     /**
