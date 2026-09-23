@@ -291,8 +291,8 @@ class CampaignController extends Controller
             'date'          => $campaign->date_envoi?->format('d/m/Y') ?? now()->format('d/m/Y'),
         ];
 
-        $contenuPersonnalise = EmailTemplate::renderContent($campaign->contenu, $contact, $context);
-        $objetPersonnalise   = $this->personnaliser($campaign->objet, $contact, $context);
+        $contenuPersonnalise = EmailTemplate::renderContent($campaign->contenu ?? '', $contact, $context);
+        $objetPersonnalise   = self::personnaliser($campaign->objet ?? $campaign->nom ?? '', $contact, $context);
 
         return view('campaigns.preview', compact(
             'campaign',
@@ -303,8 +303,9 @@ class CampaignController extends Controller
         ));
     }
 
-    public static function personnaliser(string $texte, ?Contact $contact = null, array $extraVariables = []): string
+    public static function personnaliser(?string $texte, ?Contact $contact = null, array $extraVariables = []): string
     {
+        $texte = (string) ($texte ?? '');
         $campaign = $extraVariables['campaign'] ?? null;
         $variables = [
             'nom'           => $contact?->nom ?? $extraVariables['nom'] ?? null,
