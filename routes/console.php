@@ -23,8 +23,3 @@ Schedule::command('queue:work database --queue=emails,default --stop-when-empty 
     ->everyMinute()
     ->withoutOverlapping();
 
-// Traitement des bounces IMAP (OVH — toutes les 15 minutes)
-Schedule::command('bounces:process')
-    ->everyFifteenMinutes()
-    ->withoutOverlapping()
-    ->runInBackground();

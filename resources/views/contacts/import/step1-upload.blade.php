@@ -4,7 +4,7 @@
     {{-- Header / Stepper --}}
     <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div class="flex items-center gap-4 mb-6">
-            <a href="{{ isset($targetCategory) ? route('categories.show', $targetCategory) : route('contacts.index') }}"
+            <a href="{{ (isset($targetCategory) && $targetCategory) ? route('categories.show', $targetCategory) : route('contacts.index') }}"
                class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             </a>
