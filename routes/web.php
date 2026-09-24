@@ -26,58 +26,107 @@ Route::get('/unsubscribe/{email}', [App\Http\Controllers\UnsubscribeController::
 
 // Route Cron sécurisée appelée par cron-job.org pour traiter la file d'attente automatiquement
 Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
-    $token = env('CRON_TOKEN', 'caei-cron-secret-2026');
-    if ($request->query('token') !== $token) {
-        return response()->json(['error' => 'Non autorisé'], 403);
-    }
-
-    @set_time_limit(120);
-
-    // 1. Déclencher les campagnes programmées
+    // Toujours retourner du JSON — jamais de 500 HTTP
     try {
-        \Illuminate\Support\Facades\Artisan::call('campaigns:dispatch-scheduled');
-    } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::error("Cron dispatch-scheduled error: " . $e->getMessage());
-    }
+        $token = env('CRON_TOKEN', 'caei-cron-secret-2026');
+        if ($request->query('token') !== $token) {
+            return response()->json(['error' => 'Non autorisé'], 403);
+        }
 
-    // 2. Exécuter le scheduler Laravel (relances auto)
-    try {
-        \Illuminate\Support\Facades\Artisan::call('schedule:run');
-    } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::error("Cron schedule:run error: " . $e->getMessage());
-    }
+        @set_time_limit(0);
+        $results = [];
 
-    // 3. Auto-remplissage des messages d'erreur explicites pour les logs échoués
-    try {
-        \Illuminate\Support\Facades\DB::table('email_logs')
-            ->whereIn('status', ['failed', 'bounced', 'invalid'])
-            ->where(function ($q) {
-                $q->whereNull('error_message')->orWhere('error_message', '');
-            })
-            ->update(['error_message' => 'Échec de connexion SMTP / Rejet du serveur de messagerie ou quota dépassé']);
-    } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::warning("Impossible de mettre à jour error_message dans cron/run: " . $e->getMessage());
-    }
+        // 1. Déclencher les campagnes programmées
+        try {
+            \Illuminate\Support\Facades\Artisan::call('campaigns:dispatch-scheduled');
+            $results['dispatch_scheduled'] = 'ok';
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Cron dispatch-scheduled error: " . $e->getMessage());
+            $results['dispatch_scheduled'] = 'error: ' . $e->getMessage();
+        }
 
-    // 4. Traiter immédiatement la file d'attente
-    try {
-        \Illuminate\Support\Facades\Artisan::call('queue:work', [
-            'connection' => 'database',
-            '--queue' => 'emails,default',
-            '--stop-when-empty' => true,
-            '--max-jobs' => 50,
-            '--tries' => 3,
-            '--timeout' => 55,
+        // 2. Exécuter le scheduler Laravel (relances auto)
+        try {
+            \Illuminate\Support\Facades\Artisan::call('schedule:run');
+            $results['schedule_run'] = 'ok';
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Cron schedule:run error: " . $e->getMessage());
+            $results['schedule_run'] = 'error: ' . $e->getMessage();
+        }
+
+        // 3. Auto-remplissage des messages d'erreur explicites pour les logs échoués
+        try {
+            \Illuminate\Support\Facades\DB::table('email_logs')
+                ->whereIn('status', ['failed', 'bounced', 'invalid'])
+                ->where(function ($q) {
+                    $q->whereNull('error_message')->orWhere('error_message', '');
+                })
+                ->update(['error_message' => 'Échec de connexion SMTP / Rejet du serveur de messagerie ou quota dépassé']);
+            $results['fix_error_messages'] = 'ok';
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Impossible de mettre à jour error_message dans cron/run: " . $e->getMessage());
+            $results['fix_error_messages'] = 'error: ' . $e->getMessage();
+        }
+
+        // 4. Lancer le queue worker en arrière-plan (proc_open non-bloquant)
+        // IMPORTANT : on ne fait plus Artisan::call('queue:work') synchrone ici.
+        // Les exceptions SMTP des jobs (ex: 550 OVH) remontaient jusqu'au handler HTTP → 500.
+        // Avec proc_open, le worker tourne en dehors du cycle HTTP : toute exception reste dans le worker.
+        try {
+            $phpBin  = PHP_BINARY ?: 'php';
+            $artisan = base_path('artisan');
+            $logFile = storage_path('logs/queue-worker.log');
+
+            $cmd = sprintf(
+                '%s %s queue:work database --queue=emails,default --stop-when-empty --max-jobs=50 --tries=3 --timeout=55 --memory=128 >> %s 2>&1',
+                escapeshellarg($phpBin),
+                escapeshellarg($artisan),
+                escapeshellarg($logFile)
+            );
+
+            // Lancement non-bloquant
+            $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+            $proc = @proc_open($cmd, $descriptors, $pipes);
+            if (is_resource($proc)) {
+                foreach ($pipes as $pipe) {
+                    fclose($pipe);
+                }
+                proc_close($proc);
+                $results['queue_worker'] = 'started in background';
+            } else {
+                // proc_open non disponible sur cet hébergement — fallback synchrone sécurisé
+                \Illuminate\Support\Facades\Artisan::call('queue:work', [
+                    'connection'       => 'database',
+                    '--queue'          => 'emails,default',
+                    '--stop-when-empty'=> true,
+                    '--max-jobs'       => 30,
+                    '--tries'          => 3,
+                    '--timeout'        => 50,
+                ]);
+                $results['queue_worker'] = 'ran synchronously (proc_open unavailable)';
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Cron queue worker error: " . $e->getMessage());
+            $results['queue_worker'] = 'error: ' . substr($e->getMessage(), 0, 200);
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Cron exécuté avec succès',
+            'time'    => now()->toDateTimeString(),
+            'results' => $results,
         ]);
-    } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::error("Cron queue:work error: " . $e->getMessage());
-    }
 
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Queue worker exécuté avec succès',
-        'time' => now()->toDateTimeString(),
-    ]);
+    } catch (\Throwable $fatal) {
+        // Filet de sécurité ultime — aucune exception ne doit générer un 500
+        \Illuminate\Support\Facades\Log::critical("Cron /cron/run fatal error: " . $fatal->getMessage());
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Erreur inattendue — voir les logs Laravel',
+            'error'   => substr($fatal->getMessage(), 0, 300),
+            'time'    => now()->toDateTimeString(),
+        ], 200); // 200 intentionnel pour éviter que cron-job.org marque comme failure
+    }
 });
 
 Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])
