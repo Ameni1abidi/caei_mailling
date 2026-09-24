@@ -335,7 +335,7 @@
                                 <tr class="hover:bg-slate-50/80 transition group">
                                     <td class="px-6 py-4">
                                         <div class="font-bold text-slate-900 group-hover:text-[#C57A1E] transition">{{ $c->nom }}</div>
-                                        <div class="text-[11px] text-slate-500 mt-0.5">Créée le : {{ $c->created_at->format('d/m/Y') }}</div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5">Créée le : {{ $c->created_at?->format('d/m/Y') ?? '—' }}</div>
                                     </td>
                                     <td class="px-4 py-4 text-center">
                                         @if($c->statut === 'envoyee')
@@ -402,7 +402,7 @@
                     </h3>
                     <p class="text-xs text-slate-500 mb-5">Permet d'identifier les fournisseurs de messagerie posant problème (spam, filtres d'entreprise)</p>
 
-                    @php $maxBounce = $topBouncedDomains->first()->cnt; @endphp
+                    @php $maxBounce = max(1, (int) ($topBouncedDomains->first()?->cnt ?? 1)); @endphp
                     <div class="space-y-3.5">
                         @foreach($topBouncedDomains as $domain)
                             @php $pct = round(($domain->cnt / $maxBounce) * 100); @endphp

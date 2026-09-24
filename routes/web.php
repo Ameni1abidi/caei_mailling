@@ -21,7 +21,7 @@ Route::get('/', function () {
 // Routes publiques de tracking — utilisent un UUID opaque (non-séquentiel) pour la sécurité
 Route::get('/track/open/{token}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
 Route::get('/track/click/{token}', [App\Http\Controllers\TrackingController::class, 'click'])->name('track.click');
-Route::get('/unsubscribe/{email}', [App\Http\Controllers\UnsubscribeController::class, 'unsubscribe'])->name('contact.unsubscribe');
+Route::get('/unsubscribe/{email}', [App\Http\Controllers\UnsubscribeController::class, 'unsubscribe'])->middleware('throttle:10,1')->name('contact.unsubscribe');
 
 
 // Route Cron sécurisée appelée par cron-job.org pour traiter la file d'attente automatiquement
@@ -156,7 +156,7 @@ Route::middleware('auth')->group(function () {
     Route::get('contacts/export', [ContactController::class, 'export'])->name('contacts.export');
     Route::post('contacts/import', [ContactController::class, 'import'])->name('contacts.import');
     Route::get('contacts/import-history', [ContactController::class, 'importHistory'])->name('contacts.import-history');
-    Route::resource('contacts', ContactController::class);
+    Route::resource('contacts', ContactController::class)->except(['show']);
 
     Route::get('categories/{category}/export', [CategoryController::class, 'export'])->name('categories.export');
     Route::resource('categories', CategoryController::class);
@@ -179,7 +179,7 @@ Route::middleware('auth')->group(function () {
     Route::post('campaigns/{campaign}/unschedule', [CampaignController::class, 'unscheduleCampaign'])->name('campaigns.unschedule');
 
     // Pièces jointes / Fichiers
-    Route::resource('attachments', CampaignAttachmentController::class);
+    Route::resource('attachments', CampaignAttachmentController::class)->only(['index', 'create', 'store', 'destroy']);
     Route::get('attachments/{attachment}/download', [CampaignAttachmentController::class, 'download'])->name('attachments.download');
 
     Route::middleware('role:admin')->group(function () {
@@ -191,7 +191,7 @@ Route::middleware('auth')->group(function () {
         Route::post('prospects/{contact}/followup', [ProspectController::class, 'scheduleFollowUp'])->name('prospects.schedule-followup');
 
         // Paramètres SMTP (Admin)
-        Route::resource('smtp-settings', SmtpSettingController::class);
+        Route::resource('smtp-settings', SmtpSettingController::class)->except(['show']);
         Route::post('smtp-settings/{smtp_setting}/test', [SmtpSettingController::class, 'testConnection'])->name('smtp-settings.test');
         Route::post('smtp-settings/{smtp_setting}/activate', [SmtpSettingController::class, 'activate'])->name('smtp-settings.activate');
 

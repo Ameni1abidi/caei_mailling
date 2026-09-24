@@ -73,17 +73,16 @@ class CategoryController extends Controller
 
         $contacts = $query->latest('contacts.created_at')->paginate(25)->withQueryString();
 
-        // Get distinct values for filter dropdowns (from contacts in this category)
-        $allContacts = $category->contacts;
-        $pays = $allContacts->pluck('pays')->filter()->unique()->sort()->values();
-        $entreprises = $allContacts->pluck('entreprise')->filter()->unique()->sort()->values();
-        $fonctions = $allContacts->pluck('fonction')->filter()->unique()->sort()->values();
-        $secteurs = $allContacts->pluck('secteur_activite')->filter()->unique()->sort()->values();
+        // Get distinct values for filter dropdowns via SQL (évite le chargement de TOUS les contacts en RAM)
+        $pays        = $category->contacts()->whereNotNull('pays')->distinct()->orderBy('pays')->pluck('pays');
+        $entreprises = $category->contacts()->whereNotNull('entreprise')->distinct()->orderBy('entreprise')->pluck('entreprise');
+        $fonctions   = $category->contacts()->whereNotNull('fonction')->distinct()->orderBy('fonction')->pluck('fonction');
+        $secteurs    = $category->contacts()->whereNotNull('secteur_activite')->distinct()->orderBy('secteur_activite')->pluck('secteur_activite');
 
-        // Available contacts to add (not already in this list)
+        // Available contacts to add (not already in this list) — limité à 300 pour éviter OutOfMemory
         $availableContacts = Contact::whereDoesntHave('categories', function ($q) use ($category) {
             $q->where('categories.id', $category->id);
-        })->orderBy('nom')->get();
+        })->orderBy('nom')->limit(300)->get(['id', 'nom', 'prenom', 'email', 'entreprise']);
 
         return view('categories.show', compact(
             'category', 'contacts', 'pays', 'entreprises', 'fonctions', 'secteurs', 'availableContacts'
