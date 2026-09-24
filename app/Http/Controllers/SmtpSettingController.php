@@ -79,8 +79,9 @@ class SmtpSettingController extends Controller
      */
     public function activate(SmtpSetting $smtpSetting)
     {
-        // Désactiver toutes les configurations
-        SmtpSetting::where('is_active', true)->update(['is_active' => false]);
+        // Désactiver uniquement les configurations SMTP globales (sans user_id)
+        // Ne pas toucher aux SMTP personnels des utilisateurs
+        SmtpSetting::where('is_active', true)->whereNull('user_id')->update(['is_active' => false]);
 
         // Activer celle demandée
         $smtpSetting->update(['is_active' => true]);

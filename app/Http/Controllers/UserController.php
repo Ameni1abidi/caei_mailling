@@ -63,14 +63,25 @@ class UserController extends Controller
         $totalCampaigns = 0;
 
         $userStatsList = $users->map(function ($user) use (&$totalEmailsSent, &$totalEmailsOpened, &$totalEmailsClicked, &$totalCampaigns) {
-            $st = $user->stats;
-            $totalEmailsSent += $st['emails_sent'];
-            $totalEmailsOpened += $st['emails_opened'];
+            try {
+                $st = $user->stats;
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("UserController monitoring stats error for user #{$user->id}: " . $e->getMessage());
+                $st = [
+                    'emails_sent' => 0, 'emails_opened' => 0, 'emails_clicked' => 0,
+                    'total_campaigns' => 0, 'sent_campaigns' => 0, 'draft_campaigns' => 0,
+                    'in_progress_campaigns' => 0, 'emails_delivered' => 0, 'emails_failed' => 0,
+                    'open_rate' => 0, 'click_rate' => 0, 'delivery_rate' => 0,
+                    'contacts_imported' => 0, 'last_activity' => null, 'last_campaign' => null,
+                ];
+            }
+            $totalEmailsSent    += $st['emails_sent'];
+            $totalEmailsOpened  += $st['emails_opened'];
             $totalEmailsClicked += $st['emails_clicked'];
-            $totalCampaigns += $st['total_campaigns'];
+            $totalCampaigns     += $st['total_campaigns'];
 
             return [
-                'user' => $user,
+                'user'  => $user,
                 'stats' => $st,
             ];
         });
@@ -320,6 +331,11 @@ class UserController extends Controller
     {
         if ($request->user()->is($user)) {
             return back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+
+        // Protection contre la suppression du dernier administrateur
+        if ($user->hasRole('admin') && User::role('admin')->count() <= 1) {
+            return back()->with('error', 'Impossible de supprimer le dernier administrateur de la plateforme.');
         }
 
         $name = $user->name;

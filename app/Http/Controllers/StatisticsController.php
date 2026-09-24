@@ -79,6 +79,7 @@ class StatisticsController extends Controller
                 COALESCE(SUM(opened), 0) as opened,
                 COALESCE(SUM(CASE WHEN status IN ('bounced','failed','invalid') THEN 1 ELSE 0 END), 0) as rejected
             ")
+            ->whereIn('campaign_id', $userCampaignIds)
             ->groupBy('day')
             ->orderBy('day');
 

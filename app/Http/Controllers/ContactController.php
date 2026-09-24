@@ -97,6 +97,12 @@ class ContactController extends Controller
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
             'notes' => 'nullable|string',
+        ], [
+            'nom.required'   => 'Le nom est obligatoire.',
+            'prenom.required'=> 'Le prénom est obligatoire.',
+            'email.required' => 'L\'adresse email est obligatoire.',
+            'email.email'    => 'L\'adresse email n\'est pas valide.',
+            'email.unique'   => 'Cette adresse email est déjà enregistrée dans les contacts.',
         ]);
 
         if (empty($validated['prospect_status'])) {
@@ -139,6 +145,12 @@ class ContactController extends Controller
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
             'notes' => 'nullable|string',
+        ], [
+            'nom.required'   => 'Le nom est obligatoire.',
+            'prenom.required'=> 'Le prénom est obligatoire.',
+            'email.required' => 'L\'adresse email est obligatoire.',
+            'email.email'    => 'L\'adresse email n\'est pas valide.',
+            'email.unique'   => 'Cette adresse email est déjà utilisée par un autre contact.',
         ]);
 
         $categoryIds = $validated['categories'] ?? [];
