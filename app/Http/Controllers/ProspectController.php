@@ -87,7 +87,7 @@ class ProspectController extends Controller
         }
 
         $categories = Category::orderBy('name')->get(['id', 'name']);
-        $campaigns = Campaign::latest()->get(['id', 'nom']);
+        $campaigns = Campaign::forUser(auth()->user())->latest()->get(['id', 'nom']);
         $paysOptions = Contact::whereNotNull('pays')->where('pays', '!=', '')->distinct()->pluck('pays');
         $secteurOptions = Contact::whereNotNull('secteur_activite')->where('secteur_activite', '!=', '')->distinct()->pluck('secteur_activite');
 

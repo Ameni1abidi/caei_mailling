@@ -266,7 +266,7 @@ class CampaignController extends Controller
                 : Contact::query();
         }
 
-        $contactsDisponibles = $contactsQuery->orderBy('nom')->get(['id', 'nom', 'prenom', 'email', 'entreprise', 'fonction', 'pays']);
+        $contactsDisponibles = $contactsQuery->orderBy('nom')->limit(500)->get(['id', 'nom', 'prenom', 'email', 'entreprise', 'fonction', 'pays']);
 
         if ($contactsDisponibles->isEmpty()) {
             $dummyContact = new Contact([
