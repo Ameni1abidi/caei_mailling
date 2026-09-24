@@ -111,6 +111,29 @@ class CleanDatabaseCommand extends Command
             $total += $interOld;
         }
 
+        // ── 7. Désinscrire les contacts avec Hard Bounces / Invalid enregistrés ───
+        $bouncedContactIds = DB::table('email_logs')
+            ->whereIn('status', ['bounced', 'invalid'])
+            ->pluck('contact_id')
+            ->unique()
+            ->filter();
+
+        if ($bouncedContactIds->isNotEmpty()) {
+            $countBounced = DB::table('contacts')
+                ->whereIn('id', $bouncedContactIds)
+                ->whereNull('unsubscribed_at')
+                ->count();
+
+            $this->line("  contacts (hard bounce) : {$countBounced} à désinscrire");
+            if (! $dryRun && $countBounced > 0) {
+                DB::table('contacts')
+                    ->whereIn('id', $bouncedContactIds)
+                    ->whereNull('unsubscribed_at')
+                    ->update(['unsubscribed_at' => now()]);
+                $this->info("  ✅ contacts en échec définitif désinscrits ({$countBounced})");
+            }
+        }
+
         // ── Résumé ────────────────────────────────────────────────────────────
         $this->newLine();
         $this->info("══════════════════════════════════════════");
