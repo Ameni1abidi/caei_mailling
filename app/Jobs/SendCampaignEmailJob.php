@@ -130,8 +130,12 @@ class SendCampaignEmailJob implements ShouldQueue
 
             // Ne pas retenter pour les adresses définitivement invalides
             // (domaine inexistant, adresse rejetée, etc.).
-            // Retenter ne ferait qu'épuiser les tentatives inutilement.
+            // Désinscrire automatiquement le contact pour l'exclure des prochaines campagnes.
             if ($status === EmailLog::STATUS_INVALID || $status === EmailLog::STATUS_BOUNCED) {
+                Contact::where('id', $this->contact->id)
+                    ->whereNull('unsubscribed_at')
+                    ->update(['unsubscribed_at' => now()]);
+
                 $this->delete();
                 return;
             }
