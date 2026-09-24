@@ -35,26 +35,5 @@ return [
         ],
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Bounce Email IMAP Configuration (OVH)
-    |--------------------------------------------------------------------------
-    |
-    | Boîte email dédiée à la réception des NDR (bounces).
-    | Configurer dans .env :
-    |   BOUNCE_EMAIL=bounce@caei-afri.com
-    |   BOUNCE_IMAP_HOST=ssl://imap.mail.ovh.net
-    |   BOUNCE_IMAP_PORT=993
-    |   BOUNCE_IMAP_USER=bounce@caei-afri.com
-    |   BOUNCE_IMAP_PASS=votre-mot-de-passe
-    |
-    */
-    'bounce_imap' => [
-        'address'  => env('BOUNCE_EMAIL'),
-        'host'     => env('BOUNCE_IMAP_HOST', 'ssl://imap.mail.ovh.net'),
-        'port'     => (int) env('BOUNCE_IMAP_PORT', 993),
-        'username' => env('BOUNCE_IMAP_USER'),
-        'password' => env('BOUNCE_IMAP_PASS'),
-    ],
 
 ];
