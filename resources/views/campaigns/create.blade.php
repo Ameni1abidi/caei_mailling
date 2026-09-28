@@ -308,7 +308,9 @@
                                             }
                                         } catch (e) {}
 
-                                        return [{ id: this.makeId(), type: 'text', content: String(content), align: 'left' }];
+                                        // Convert literal \n to real newlines for display in textarea
+                                        const textContent = String(content).replace(/\\n/g, '\n');
+                                        return [{ id: this.makeId(), type: 'text', content: textContent, align: 'left' }];
                                     },
                                     addBlock(type) {
                                         const block = { id: this.makeId(), type };
