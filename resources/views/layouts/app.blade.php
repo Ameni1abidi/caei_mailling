@@ -76,5 +76,8 @@
                 </main>
             </div>
         </div>
+
+        {{-- Toast Notifications (success / error / warning / info) --}}
+        <x-flash-messages />
     </body>
 </html>
