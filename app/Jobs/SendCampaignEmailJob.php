@@ -211,8 +211,31 @@ class SendCampaignEmailJob implements ShouldQueue
             || str_contains($message, 'temporarily')
             || str_contains($message, 'try later')
             || str_contains($message, 'please retry')
-            || str_contains($message, 'slow down')) {
+            || str_contains($message, 'slow down')
+            || str_contains($message, '4.7.') // codes 4xx = temporaires
+            || str_contains($message, '452')  // boîte pleine temporaire
+            || str_contains($message, 'connection timed out')
+            || str_contains($message, 'timed out')) {
             return EmailLog::STATUS_FAILED; // temporaire → sera retenté
+        }
+
+        // ── Hard bounces (rejet permanent du destinataire) ───────────────────
+        // Codes 5.1.x = problème de destinataire permanent
+        if (str_contains($message, 'bounce')
+            || str_contains($message, '5.1.0')
+            || str_contains($message, '5.1.1')
+            || str_contains($message, '5.1.2')
+            || str_contains($message, '5.1.3')
+            || str_contains($message, '5.1.6')
+            || str_contains($message, '5.1.10')  // Microsoft: RecipientNotFound
+            || str_contains($message, 'undeliverable')
+            || str_contains($message, 'recipient not found')      // espaces
+            || str_contains($message, 'recipientnotfound')        // camelcase/collé
+            || str_contains($message, 'resolver.adr')             // Microsoft Exchange
+            || str_contains($message, 'no route to host')
+            || str_contains($message, 'host or domain name not found')
+            || str_contains($message, 'name or service not known')) {
+            return EmailLog::STATUS_BOUNCED;
         }
 
         // ── Adresses définitivement invalides ────────────────────────────────
@@ -220,20 +243,29 @@ class SendCampaignEmailJob implements ShouldQueue
             || str_contains($message, 'invalid address')
             || str_contains($message, 'user unknown')
             || str_contains($message, 'mailbox unavailable')
+            || str_contains($message, 'mailbox not found')
             || str_contains($message, 'address rejected')
             || str_contains($message, 'no such user')
             || str_contains($message, 'does not exist')
-            || str_contains($message, 'format error')) {
+            || str_contains($message, 'user doesn\'t exist')
+            || str_contains($message, 'account does not exist')
+            || str_contains($message, 'bad destination')
+            || str_contains($message, 'format error')
+            || str_contains($message, '5.5.4')   // invalid domain
+            || str_contains($message, '550 5.4')  // routing error
+        ) {
             return EmailLog::STATUS_INVALID;
         }
 
-        // ── Hard bounces (rejet permanent du destinataire) ───────────────────
-        if (str_contains($message, 'bounce')
-            || str_contains($message, '5.1.1')
-            || str_contains($message, '5.1.2')
-            || str_contains($message, 'undeliverable')
-            || str_contains($message, 'recipient not found')) {
-            return EmailLog::STATUS_BOUNCED;
+        // ── Rejet pour spam / politique ─────────────────────────────────────
+        // Ces erreurs sont PERMANENTES mais liées à la réputation, pas à l'adresse.
+        // On marque `failed` (pas bounce) pour ne pas désinscrire le contact.
+        if (str_contains($message, 'spam')
+            || str_contains($message, 'blocked')
+            || str_contains($message, 'blacklist')
+            || str_contains($message, 'policy violation')
+            || str_contains($message, '5.7.')) {
+            return EmailLog::STATUS_FAILED;
         }
 
         return EmailLog::STATUS_FAILED;
