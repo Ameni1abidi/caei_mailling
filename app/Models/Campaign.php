@@ -150,22 +150,24 @@ class Campaign extends Model
 
     public function markAsSentIfAllEmailsAreSent(): bool
     {
-        // Single conditional UPDATE — avoids two SELECT queries.
-        // Uses a NOT EXISTS subquery so we only flip to "envoyee"
-        // when there are logs AND none are still pending.
+        // Flip statut à "envoyée" UNIQUEMENT si :
+        // 1. Aucun log n'est encore en "pending"
+        // 2. Au moins 1 email a été effectivement livré (sent ou delivered)
+        // Sans la condition 2, une campagne 100% échec serait marquée "Envoyée" — erroné.
         $updated = \Illuminate\Support\Facades\DB::table('campaigns')
             ->where('id', $this->id)
             ->where('statut', 'en_cours')
-            ->whereExists(function ($query) {
-                $query->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('email_logs')
-                    ->whereColumn('email_logs.campaign_id', 'campaigns.id');
-            })
             ->whereNotExists(function ($query) {
                 $query->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('email_logs')
                     ->whereColumn('email_logs.campaign_id', 'campaigns.id')
                     ->where('email_logs.status', EmailLog::STATUS_PENDING);
+            })
+            ->whereExists(function ($query) {
+                $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('email_logs')
+                    ->whereColumn('email_logs.campaign_id', 'campaigns.id')
+                    ->whereIn('email_logs.status', [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED]);
             })
             ->update(['statut' => 'envoyee', 'updated_at' => now()]);
 

@@ -18,9 +18,13 @@ Route::get('/', function () {
         : redirect()->route('login');
 })->name('welcome');
 
-// Routes publiques de tracking — utilisent un UUID opaque (non-séquentiel) pour la sécurité
-Route::get('/track/open/{token}', [App\Http\Controllers\TrackingController::class, 'open'])->name('track.open');
-Route::get('/track/click/{token}', [App\Http\Controllers\TrackingController::class, 'click'])->name('track.click');
+// Routes publiques de tracking — throttle pour éviter les abus / inflation artificielle
+Route::get('/track/open/{token}', [App\Http\Controllers\TrackingController::class, 'open'])
+    ->middleware('throttle:120,1')
+    ->name('track.open');
+Route::get('/track/click/{token}', [App\Http\Controllers\TrackingController::class, 'click'])
+    ->middleware('throttle:60,1')
+    ->name('track.click');
 Route::get('/unsubscribe/{email}', [App\Http\Controllers\UnsubscribeController::class, 'unsubscribe'])->middleware('throttle:10,1')->name('contact.unsubscribe');
 
 

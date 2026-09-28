@@ -24,7 +24,8 @@ class TrackingController extends Controller
                 $updates = [];
 
                 if (! $emailLog->opened) {
-                    $updates['opened'] = true;
+                    $updates['opened']    = true;
+                    $updates['opened_at'] = now(); // timestamp première ouverture
                 }
 
                 if ($emailLog->status === EmailLog::STATUS_SENT) {
@@ -98,9 +99,13 @@ class TrackingController extends Controller
 
                 $emailLog->update($updates);
 
-                // Avancer le statut prospect
+                // Avancer le statut prospect vers "lien cliqué" (signal plus fort qu'une ouverture)
                 if ($emailLog->contact) {
-                    $emailLog->contact->advanceStatusTo(Contact::STATUS_EMAIL_OUVERT);
+                    $emailLog->contact->advanceStatusTo(
+                        defined('App\Models\Contact::STATUS_LIEN_CLIQUE')
+                            ? Contact::STATUS_LIEN_CLIQUE
+                            : Contact::STATUS_EMAIL_OUVERT
+                    );
                 }
             }
         } catch (\Throwable $e) {
