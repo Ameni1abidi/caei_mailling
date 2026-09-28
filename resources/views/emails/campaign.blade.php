@@ -143,6 +143,14 @@
         </tr>
     </table>
 
-    <!-- Pixel d'ouverture désactivé -->
+    {{-- Pixel de tracking d'ouverture 1×1 (invisible) --}}
+    @if(isset($emailLogId) && $emailLogId)
+        @php $emailLog = \App\Models\EmailLog::find($emailLogId); @endphp
+        @if($emailLog?->tracking_token)
+            <img src="{{ route('track.open', $emailLog->tracking_token) }}"
+                 width="1" height="1" border="0"
+                 alt="" style="display:block;width:1px;height:1px;border:0;margin:0;padding:0;" />
+        @endif
+    @endif
 </body>
 </html>

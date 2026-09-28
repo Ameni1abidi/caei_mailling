@@ -45,9 +45,10 @@ class CampaignMail extends Mailable
         // Configuration Multipart/Alternative : HTML + Version texte brut (indispensable anti-spam)
         $mail = $this->subject($this->objetPersonnalise)
             ->view('emails.campaign', [
-                'contact'            => $this->contact,
-                'objetPersonnalise'  => $this->objetPersonnalise,
-                'contenuPersonnalise'=> $this->contenuPersonnalise,
+                'contact'             => $this->contact,
+                'objetPersonnalise'   => $this->objetPersonnalise,
+                'contenuPersonnalise' => $this->contenuPersonnalise,
+                'emailLogId'          => $this->emailLogId,  // pour le pixel de tracking
             ])
             ->text('emails.campaign_text', [
                 'contact'        => $this->contact,
