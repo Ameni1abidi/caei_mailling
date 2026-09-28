@@ -34,6 +34,7 @@ class EmailLog extends Model
         'status',
         'retry_count',
         'opened',
+        'opened_at',
         'clicked',
         'clicked_at',
         'clicked_count',
@@ -45,6 +46,7 @@ class EmailLog extends Model
     {
         return [
             'opened'        => 'boolean',
+            'opened_at'     => 'datetime',
             'clicked'       => 'boolean',
             'clicked_at'    => 'datetime',
             'clicked_count' => 'integer',

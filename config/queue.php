@@ -40,8 +40,10 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
-            'after_commit' => false,
+            // IMPORTANT : doit être > backoff max du job (1800s = 30min)
+            // Sinon le worker re-dispatche le job AVANT la fin du backoff → doublon d'email !
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1860),
+            'after_commit' => true,
         ],
 
         'beanstalkd' => [
