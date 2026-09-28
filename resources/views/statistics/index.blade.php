@@ -240,6 +240,118 @@
                 </div>
             </div>
 
+            {{-- ── Avancement d'envoi par jour ─────────────────────────────────── --}}
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-lg font-bold text-[#03123F] tracking-wide flex items-center gap-2">
+                            <svg class="w-5 h-5 text-[#C57A1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            Avancement d'envoi chaque jour
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Répartition quotidienne : emails envoyés, en attente et en échec</p>
+                    </div>
+
+                    {{-- Légende --}}
+                    <div class="hidden sm:flex items-center gap-4 text-xs font-semibold">
+                        <span class="flex items-center gap-1.5 text-emerald-700">
+                            <span class="w-3 h-3 rounded bg-emerald-500 shrink-0"></span> Envoyés
+                        </span>
+                        <span class="flex items-center gap-1.5 text-amber-700">
+                            <span class="w-3 h-3 rounded bg-amber-400 shrink-0"></span> En attente
+                        </span>
+                        <span class="flex items-center gap-1.5 text-rose-700">
+                            <span class="w-3 h-3 rounded bg-rose-500 shrink-0"></span> Échecs
+                        </span>
+                    </div>
+                </div>
+
+                @if($dailyProgress->isEmpty())
+                    <div class="flex items-center justify-center h-48 text-slate-400 text-sm">
+                        Aucune donnée d'avancement pour la période sélectionnée.
+                    </div>
+                @else
+                    {{-- Résumé rapide --}}
+                    <div class="grid grid-cols-3 gap-4 mb-5">
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                            <div class="text-2xl font-black text-emerald-700">
+                                {{ number_format($dailyProgress->sum('envoyes')) }}
+                            </div>
+                            <div class="text-xs font-bold text-emerald-600 mt-1">Total envoyés</div>
+                        </div>
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                            <div class="text-2xl font-black text-amber-700">
+                                {{ number_format($dailyProgress->sum('en_attente')) }}
+                            </div>
+                            <div class="text-xs font-bold text-amber-600 mt-1">En attente</div>
+                        </div>
+                        <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 text-center">
+                            <div class="text-2xl font-black text-rose-700">
+                                {{ number_format($dailyProgress->sum('echecs')) }}
+                            </div>
+                            <div class="text-xs font-bold text-rose-600 mt-1">Échecs</div>
+                        </div>
+                    </div>
+
+                    {{-- Graphique barres empilées --}}
+                    <div class="relative h-72 w-full">
+                        <canvas id="progressBarChart"></canvas>
+                    </div>
+
+                    {{-- Tableau détaillé par jour --}}
+                    <div class="mt-6 overflow-x-auto">
+                        <table class="w-full text-sm text-left text-slate-600 border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-[11px] uppercase font-bold text-slate-500 tracking-wider border-b border-slate-200">
+                                    <th class="px-4 py-3">Date</th>
+                                    <th class="px-4 py-3 text-center text-emerald-700">✅ Envoyés</th>
+                                    <th class="px-4 py-3 text-center text-amber-700">⏳ En attente</th>
+                                    <th class="px-4 py-3 text-center text-rose-700">❌ Échecs</th>
+                                    <th class="px-4 py-3 text-center">Total</th>
+                                    <th class="px-4 py-3">Progression</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @foreach($dailyProgress as $row)
+                                    @php
+                                        $total = max(1, $row->envoyes + $row->en_attente + $row->echecs);
+                                        $pctEnvoyes = round(($row->envoyes / $total) * 100);
+                                        $pctAttente = round(($row->en_attente / $total) * 100);
+                                        $pctEchecs  = 100 - $pctEnvoyes - $pctAttente;
+                                    @endphp
+                                    <tr class="hover:bg-slate-50/70 transition">
+                                        <td class="px-4 py-3 font-bold text-slate-800">
+                                            {{ \Carbon\Carbon::parse($row->day)->format('d/m/Y') }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center font-extrabold text-emerald-700">
+                                            {{ number_format($row->envoyes) }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center font-bold text-amber-600">
+                                            {{ number_format($row->en_attente) }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center font-bold text-rose-600">
+                                            {{ number_format($row->echecs) }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center font-extrabold text-slate-900">
+                                            {{ number_format($total) }}
+                                        </td>
+                                        <td class="px-4 py-3 w-48">
+                                            <div class="flex rounded-full overflow-hidden h-4 bg-slate-100 border border-slate-200" title="{{ $pctEnvoyes }}% envoyés / {{ $pctAttente }}% attente / {{ $pctEchecs }}% échecs">
+                                                <div class="bg-emerald-500 h-full transition-all duration-500" style="width:{{ $pctEnvoyes }}%"></div>
+                                                <div class="bg-amber-400 h-full transition-all duration-500" style="width:{{ $pctAttente }}%"></div>
+                                                <div class="bg-rose-500 h-full transition-all duration-500" style="width:{{ $pctEchecs }}%"></div>
+                                            </div>
+                                            <div class="text-[10px] text-slate-500 mt-1 font-semibold">{{ $pctEnvoyes }}% envoyés</div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+
             {{-- ── Entonnoir de Qualification Prospects (CRM Funnel) ────────────── --}}
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
@@ -556,6 +668,84 @@
                             }
                         },
                         animation: { duration: 600 }
+                    }
+                });
+            }
+            // ── Stacked Bar Chart : Avancement par jour ──────────────────────
+            const progressBarCtx = document.getElementById('progressBarChart');
+            if (progressBarCtx) {
+                const progressDays    = @json($dailyProgress->pluck('day'));
+                const progressEnvoyes = @json($dailyProgress->pluck('envoyes'));
+                const progressAttente = @json($dailyProgress->pluck('en_attente'));
+                const progressEchecs  = @json($dailyProgress->pluck('echecs'));
+
+                new Chart(progressBarCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: progressDays.map(d => {
+                            const dt = new Date(d);
+                            return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+                        }),
+                        datasets: [
+                            {
+                                label: 'Envoyés',
+                                data: progressEnvoyes,
+                                backgroundColor: '#10B981',
+                                borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 4, bottomRight: 4 },
+                                borderSkipped: 'bottom',
+                            },
+                            {
+                                label: 'En attente',
+                                data: progressAttente,
+                                backgroundColor: '#FBBF24',
+                                borderRadius: 0,
+                                borderSkipped: false,
+                            },
+                            {
+                                label: 'Échecs',
+                                data: progressEchecs,
+                                backgroundColor: '#EF4444',
+                                borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },
+                                borderSkipped: 'top',
+                            },
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#03123F',
+                                titleColor: '#FFFFFF',
+                                bodyColor: '#CBD5E1',
+                                borderColor: '#C57A1E',
+                                borderWidth: 1,
+                                padding: 12,
+                                callbacks: {
+                                    label: ctx => ` ${ctx.dataset.label} : ${ctx.parsed.y.toLocaleString('fr-FR')} emails`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: true,
+                                grid: { display: false },
+                                ticks: { color: '#64748B', font: { size: 11 }, maxTicksLimit: 20 }
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                grid: { color: 'rgba(226, 232, 240, 0.8)' },
+                                ticks: {
+                                    color: '#64748B',
+                                    font: { size: 11 },
+                                    callback: val => val.toLocaleString('fr-FR')
+                                }
+                            }
+                        },
+                        animation: { duration: 700 }
                     }
                 });
             }
