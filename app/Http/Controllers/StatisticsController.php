@@ -92,6 +92,26 @@ class StatisticsController extends Controller
 
         $dailyEmails = $dailyEmailsQuery->get();
 
+        // ── Avancement d'envoi par jour (barres empilées) ─────────────────
+        $dailyProgressQuery = EmailLog::selectRaw("
+                DATE(updated_at) as day,
+                COALESCE(SUM(CASE WHEN status IN ('sent','delivered') THEN 1 ELSE 0 END), 0) as envoyes,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as en_attente,
+                COALESCE(SUM(CASE WHEN status IN ('bounced','failed','invalid') THEN 1 ELSE 0 END), 0) as echecs
+            ")
+            ->whereIn('campaign_id', $userCampaignIds)
+            ->groupBy('day')
+            ->orderBy('day');
+
+        if ($dateFrom) {
+            $dailyProgressQuery->where('updated_at', '>=', $dateFrom);
+        }
+        if ($campaignId) {
+            $dailyProgressQuery->where('campaign_id', $campaignId);
+        }
+
+        $dailyProgress = $dailyProgressQuery->get();
+
         // ── Per-campaign stats table ──────────────────────────────────────
         $perCampaignQuery = Campaign::select('campaigns.id', 'campaigns.nom', 'campaigns.statut', 'campaigns.created_at')
             ->withCount([
@@ -146,6 +166,7 @@ class StatisticsController extends Controller
             'bounceRate',
             'deliveryRate',
             'dailyEmails',
+            'dailyProgress',
             'perCampaign',
             'prospectFunnel',
             'topBouncedDomains',
