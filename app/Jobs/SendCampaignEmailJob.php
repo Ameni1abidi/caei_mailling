@@ -31,11 +31,10 @@ class SendCampaignEmailJob implements ShouldQueue
     public array $backoff = [600, 1200, 1800];
     public bool $deleteWhenMissingModels = true;
 
-    /**
-     * SMTP config cached per setting ID for the lifetime of the worker process.
-     * Avoids a DB query on every single job execution while supporting multi-SMTP.
-     */
-    private static array $cachedSmtpConfigs = [];
+    // NOTE: Nous n'utilisons PAS de cache statique SMTP au niveau du processus.
+    // Réutiliser le même transport Symfony Mailer (et sa socket TCP sous-jacente)
+    // entre plusieurs jobs provoque l'erreur "354 vs 250" quand OVH ferme la
+    // connexion en milieu de batch. Chaque job crée un transport frais à la place.
 
     public function __construct(
         public Campaign $campaign,
@@ -86,7 +85,10 @@ class SendCampaignEmailJob implements ShouldQueue
             $smtpConfig = $this->resolveSmtpConfig($campaign);
 
             if ($smtpConfig !== null) {
-                $mailerName = 'dynamic_smtp_' . ($campaign->resolveSmtpSetting()?->id ?? 'default');
+                // Nom unique par job (emailLogId) pour forcer Symfony Mailer à créer
+                // une nouvelle connexion TCP à chaque envoi — évite l'erreur "354 vs 250"
+                // qui survient quand OVH ferme silencieusement une connexion réutilisée.
+                $mailerName = 'dynamic_smtp_' . ($campaign->resolveSmtpSetting()?->id ?? 'default') . '_' . $this->emailLogId;
                 Config::set("mail.mailers.{$mailerName}", $smtpConfig['mailer']);
 
                 if ($smtpConfig['sender_email']) {
@@ -97,8 +99,13 @@ class SendCampaignEmailJob implements ShouldQueue
                 }
 
                 Mail::mailer($mailerName)->to($this->contact->email)->send($mailable);
+
+                // Purger le mailer du container pour fermer la socket TCP immédiatement
+                // et éviter qu'un prochain job dans le même worker la réutilise corrompue.
+                Mail::forgetMailers();
             } else {
                 Mail::to($this->contact->email)->send($mailable);
+                Mail::forgetMailers();
             }
 
             // Single bulk-friendly update
@@ -165,35 +172,37 @@ class SendCampaignEmailJob implements ShouldQueue
     }
 
     /**
-     * Resolve SMTP config with process-level cache per SMTP account.
+     * Résoudre la config SMTP fraîchement depuis la campagne à chaque appel.
+     *
+     * Nous évitons délibérément un cache statique/processus ici : si le même
+     * worker traitait plusieurs jobs en conservant le transport Symfony Mailer
+     * (via le Mail manager de Laravel), il réutiliserait la même socket TCP
+     * même après qu'OVH l'a fermée — produisant l'erreur "354 vs 250".
+     * Construire un tableau simple ici est bon marché (les relations sont déjà
+     * eager-loaded) et sûr.
      */
     private function resolveSmtpConfig(?Campaign $campaign): ?array
     {
         $smtp = $campaign?->resolveSmtpSetting();
-        $cacheKey = $smtp ? (int) $smtp->id : 0;
 
-        if (! array_key_exists($cacheKey, self::$cachedSmtpConfigs)) {
-            if ($smtp) {
-                self::$cachedSmtpConfigs[$cacheKey] = [
-                    'mailer' => [
-                        'transport'  => $smtp->driver ?? 'smtp',
-                        'host'       => $smtp->host,
-                        'port'       => $smtp->port,
-                        'username'   => $smtp->username,
-                        'password'   => $smtp->password,
-                        'encryption' => $smtp->encryption ?? null,
-                        'timeout'    => 30,
-                    ],
-                    'sender_email' => $smtp->sender_email ? trim($smtp->sender_email) : config('mail.from.address', 'Contact@caei-afri.com'),
-                    'sender_name'  => $smtp->sender_name ? trim($smtp->sender_name) : config('mail.from.name', 'CAEI'),
-                    'reply_to'     => $smtp->reply_to_email ? trim($smtp->reply_to_email) : ($smtp->sender_email ?: config('mail.from.address', 'Contact@caei-afri.com')),
-                ];
-            } else {
-                self::$cachedSmtpConfigs[$cacheKey] = null;
-            }
+        if (! $smtp) {
+            return null;
         }
 
-        return self::$cachedSmtpConfigs[$cacheKey];
+        return [
+            'mailer' => [
+                'transport'  => $smtp->driver ?? 'smtp',
+                'host'       => $smtp->host,
+                'port'       => $smtp->port,
+                'username'   => $smtp->username,
+                'password'   => $smtp->password,
+                'encryption' => $smtp->encryption ?? null,
+                'timeout'    => 30,
+            ],
+            'sender_email' => $smtp->sender_email ? trim($smtp->sender_email) : config('mail.from.address', 'Contact@caei-afri.com'),
+            'sender_name'  => $smtp->sender_name ? trim($smtp->sender_name) : config('mail.from.name', 'CAEI'),
+            'reply_to'     => $smtp->reply_to_email ? trim($smtp->reply_to_email) : ($smtp->sender_email ?: config('mail.from.address', 'Contact@caei-afri.com')),
+        ];
     }
 
     private function determineFailureStatus(\Throwable $exception): string
