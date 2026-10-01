@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\EmailLog;
-use App\Models\SmtpSetting;
 use App\Mail\CampaignMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,17 +23,15 @@ class SendCampaignEmailJob implements ShouldQueue
 
     /**
      * Backoff escalatoire : 10min → 20min → 30min
-     * Raison : si OVH bloque pour quota (200/h), réessayer après 30s heurte
-     * le même mur. Avec 10 minutes, la fenêtre glissante d'1h s'est écoulée
-     * et le quota est libéré → les retries aboutissent.
+     * Si OVH bloque pour quota (200/h), réessayer après 30s heurte le même mur.
+     * Avec 10 minutes, la fenêtre glissante d'1h s'est écoulée → quota libéré.
      */
     public array $backoff = [600, 1200, 1800];
     public bool $deleteWhenMissingModels = true;
 
-    // NOTE: Nous n'utilisons PAS de cache statique SMTP au niveau du processus.
-    // Réutiliser le même transport Symfony Mailer (et sa socket TCP sous-jacente)
-    // entre plusieurs jobs provoque l'erreur "354 vs 250" quand OVH ferme la
-    // connexion en milieu de batch. Chaque job crée un transport frais à la place.
+    // NOTE: Pas de cache statique SMTP. Réutiliser le même transport Symfony Mailer
+    // (et sa socket TCP) entre plusieurs jobs provoque l'erreur "354 vs 250" quand
+    // OVH ferme la connexion. Chaque job crée un transport frais via forgetMailers().
 
     public function __construct(
         public Campaign $campaign,
@@ -49,7 +46,13 @@ class SendCampaignEmailJob implements ShouldQueue
             return;
         }
 
-        // Single DB fetch for campaign with relationships — reuse for all checks below
+        // ── Garde contre double-envoi ────────────────────────────────────────────
+        // Si deux jobs tournent pour le même email_log (ex : ancien job + nouveau
+        // batch), le deuxième voit le statut déjà 'sent' et s'arrête proprement.
+        if (in_array($emailLog->status, [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED])) {
+            return;
+        }
+
         $campaign = Campaign::with(['creator.smtpSetting', 'smtpSetting'])->find($this->campaign->id);
         if (! $campaign || $campaign->statut === 'annulee') {
             $emailLog->update([
@@ -68,8 +71,6 @@ class SendCampaignEmailJob implements ShouldQueue
             return;
         }
 
-        // Re-check unsubscribe status using the already-serialized contact
-        // (avoid extra Contact::find() — use fresh() only when needed)
         if ($this->contact->unsubscribed_at !== null) {
             $emailLog->update([
                 'status'        => EmailLog::STATUS_FAILED,
@@ -80,14 +81,12 @@ class SendCampaignEmailJob implements ShouldQueue
         }
 
         try {
-            $mailable = new CampaignMail($campaign, $this->contact, $this->emailLogId);
-
+            $mailable   = new CampaignMail($campaign, $this->contact, $this->emailLogId);
             $smtpConfig = $this->resolveSmtpConfig($campaign);
 
             if ($smtpConfig !== null) {
-                // Nom unique par job (emailLogId) pour forcer Symfony Mailer à créer
-                // une nouvelle connexion TCP à chaque envoi — évite l'erreur "354 vs 250"
-                // qui survient quand OVH ferme silencieusement une connexion réutilisée.
+                // Nom unique par job pour forcer une nouvelle connexion TCP à chaque envoi.
+                // Évite l'erreur "Expected 354 but got 250" causée par une socket OVH morte.
                 $mailerName = 'dynamic_smtp_' . ($campaign->resolveSmtpSetting()?->id ?? 'default') . '_' . $this->emailLogId;
                 Config::set("mail.mailers.{$mailerName}", $smtpConfig['mailer']);
 
@@ -99,24 +98,18 @@ class SendCampaignEmailJob implements ShouldQueue
                 }
 
                 Mail::mailer($mailerName)->to($this->contact->email)->send($mailable);
-
-                // Purger le mailer du container pour fermer la socket TCP immédiatement
-                // et éviter qu'un prochain job dans le même worker la réutilise corrompue.
-                Mail::forgetMailers();
+                Mail::forgetMailers(); // Ferme la socket TCP immédiatement
             } else {
                 Mail::to($this->contact->email)->send($mailable);
                 Mail::forgetMailers();
             }
 
-            // Single bulk-friendly update
             EmailLog::where('id', $this->emailLogId)->update([
                 'status'  => EmailLog::STATUS_SENT,
                 'sent_at' => now(),
             ]);
 
-            // Advance prospect status (uses a conditional update internally)
             $this->contact->advanceStatusTo(Contact::STATUS_EMAIL_ENVOYE);
-
             $campaign->markAsSentIfAllEmailsAreSent();
 
         } catch (\Throwable $e) {
@@ -135,9 +128,6 @@ class SendCampaignEmailJob implements ShouldQueue
 
             $campaign->markAsSentIfAllEmailsAreSent();
 
-            // Ne pas retenter pour les adresses définitivement invalides
-            // (domaine inexistant, adresse rejetée, etc.).
-            // Désinscrire automatiquement le contact pour l'exclure des prochaines campagnes.
             if ($status === EmailLog::STATUS_INVALID || $status === EmailLog::STATUS_BOUNCED) {
                 Contact::where('id', $this->contact->id)
                     ->whereNull('unsubscribed_at')
@@ -158,10 +148,14 @@ class SendCampaignEmailJob implements ShouldQueue
             $errMsg = 'Échec du Queue Worker : Tentatives épuisées ou rejet de connexion SMTP';
         }
 
-        // Ne pas écraser un statut `invalid` ou `bounced` déjà enregistré
-        // par une tentative précédente — ces statuts sont définitifs.
+        // Inclure 'queued' dans les statuts éligibles au passage en 'failed'
+        // (un log 'queued' dont le job a échoué 3 fois doit être marqué 'failed').
         EmailLog::where('id', $this->emailLogId)
-            ->whereIn('status', [EmailLog::STATUS_PENDING, EmailLog::STATUS_FAILED])
+            ->whereIn('status', [
+                EmailLog::STATUS_PENDING,
+                EmailLog::STATUS_QUEUED,
+                EmailLog::STATUS_FAILED,
+            ])
             ->update([
                 'status'        => EmailLog::STATUS_FAILED,
                 'error_message' => substr($errMsg, 0, 500),
@@ -172,14 +166,8 @@ class SendCampaignEmailJob implements ShouldQueue
     }
 
     /**
-     * Résoudre la config SMTP fraîchement depuis la campagne à chaque appel.
-     *
-     * Nous évitons délibérément un cache statique/processus ici : si le même
-     * worker traitait plusieurs jobs en conservant le transport Symfony Mailer
-     * (via le Mail manager de Laravel), il réutiliserait la même socket TCP
-     * même après qu'OVH l'a fermée — produisant l'erreur "354 vs 250".
-     * Construire un tableau simple ici est bon marché (les relations sont déjà
-     * eager-loaded) et sûr.
+     * Résoudre la config SMTP fraîchement à chaque appel (pas de cache statique).
+     * Les relations sont déjà eager-loaded → pas de requête DB supplémentaire.
      */
     private function resolveSmtpConfig(?Campaign $campaign): ?array
     {
@@ -200,7 +188,7 @@ class SendCampaignEmailJob implements ShouldQueue
                 'timeout'    => 30,
             ],
             'sender_email' => $smtp->sender_email ? trim($smtp->sender_email) : config('mail.from.address', 'Contact@caei-afri.com'),
-            'sender_name'  => $smtp->sender_name ? trim($smtp->sender_name) : config('mail.from.name', 'CAEI'),
+            'sender_name'  => $smtp->sender_name  ? trim($smtp->sender_name)  : config('mail.from.name', 'CAEI'),
             'reply_to'     => $smtp->reply_to_email ? trim($smtp->reply_to_email) : ($smtp->sender_email ?: config('mail.from.address', 'Contact@caei-afri.com')),
         ];
     }
@@ -209,9 +197,6 @@ class SendCampaignEmailJob implements ShouldQueue
     {
         $message = strtolower($exception->getMessage());
 
-        // ── Détection rate limit / quota AVANT les bounces ──────────────────
-        // Ces erreurs sont TEMPORAIRES : OVH, Gmail, etc. limitent le débit.
-        // Il ne faut PAS les marquer en bounced — l'adresse destinataire est valide.
         if (str_contains($message, 'quota exceeded')
             || str_contains($message, 'rate limit')
             || str_contains($message, 'too many')
@@ -221,33 +206,30 @@ class SendCampaignEmailJob implements ShouldQueue
             || str_contains($message, 'try later')
             || str_contains($message, 'please retry')
             || str_contains($message, 'slow down')
-            || str_contains($message, '4.7.') // codes 4xx = temporaires
-            || str_contains($message, '452')  // boîte pleine temporaire
+            || str_contains($message, '4.7.')
+            || str_contains($message, '452')
             || str_contains($message, 'connection timed out')
             || str_contains($message, 'timed out')) {
-            return EmailLog::STATUS_FAILED; // temporaire → sera retenté
+            return EmailLog::STATUS_FAILED;
         }
 
-        // ── Hard bounces (rejet permanent du destinataire) ───────────────────
-        // Codes 5.1.x = problème de destinataire permanent
         if (str_contains($message, 'bounce')
             || str_contains($message, '5.1.0')
             || str_contains($message, '5.1.1')
             || str_contains($message, '5.1.2')
             || str_contains($message, '5.1.3')
             || str_contains($message, '5.1.6')
-            || str_contains($message, '5.1.10')  // Microsoft: RecipientNotFound
+            || str_contains($message, '5.1.10')
             || str_contains($message, 'undeliverable')
-            || str_contains($message, 'recipient not found')      // espaces
-            || str_contains($message, 'recipientnotfound')        // camelcase/collé
-            || str_contains($message, 'resolver.adr')             // Microsoft Exchange
+            || str_contains($message, 'recipient not found')
+            || str_contains($message, 'recipientnotfound')
+            || str_contains($message, 'resolver.adr')
             || str_contains($message, 'no route to host')
             || str_contains($message, 'host or domain name not found')
             || str_contains($message, 'name or service not known')) {
             return EmailLog::STATUS_BOUNCED;
         }
 
-        // ── Adresses définitivement invalides ────────────────────────────────
         if (str_contains($message, 'recipient address rejected')
             || str_contains($message, 'invalid address')
             || str_contains($message, 'user unknown')
@@ -260,15 +242,11 @@ class SendCampaignEmailJob implements ShouldQueue
             || str_contains($message, 'account does not exist')
             || str_contains($message, 'bad destination')
             || str_contains($message, 'format error')
-            || str_contains($message, '5.5.4')   // invalid domain
-            || str_contains($message, '550 5.4')  // routing error
-        ) {
+            || str_contains($message, '5.5.4')
+            || str_contains($message, '550 5.4')) {
             return EmailLog::STATUS_INVALID;
         }
 
-        // ── Rejet pour spam / politique ─────────────────────────────────────
-        // Ces erreurs sont PERMANENTES mais liées à la réputation, pas à l'adresse.
-        // On marque `failed` (pas bounce) pour ne pas désinscrire le contact.
         if (str_contains($message, 'spam')
             || str_contains($message, 'blocked')
             || str_contains($message, 'blacklist')

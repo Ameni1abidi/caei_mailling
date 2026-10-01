@@ -151,9 +151,9 @@ class Campaign extends Model
     public function markAsSentIfAllEmailsAreSent(): bool
     {
         // Flip statut à "envoyée" UNIQUEMENT si :
-        // 1. Aucun log n'est encore en "pending"
-        // 2. Au moins 1 email a été effectivement livré (sent ou delivered)
-        // Sans la condition 2, une campagne 100% échec serait marquée "Envoyée" — erroné.
+        // 1. Aucun log n'est encore en "pending" (pas encore dispatché)
+        // 2. Aucun log n'est en "queued" (dispatché mais pas encore traité)
+        // 3. Au moins 1 email a été effectivement livré (sent ou delivered)
         $updated = \Illuminate\Support\Facades\DB::table('campaigns')
             ->where('id', $this->id)
             ->where('statut', 'en_cours')
@@ -161,7 +161,7 @@ class Campaign extends Model
                 $query->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('email_logs')
                     ->whereColumn('email_logs.campaign_id', 'campaigns.id')
-                    ->where('email_logs.status', EmailLog::STATUS_PENDING);
+                    ->whereIn('email_logs.status', [EmailLog::STATUS_PENDING, EmailLog::STATUS_QUEUED]);
             })
             ->whereExists(function ($query) {
                 $query->select(\Illuminate\Support\Facades\DB::raw(1))

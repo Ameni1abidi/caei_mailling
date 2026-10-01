@@ -2,19 +2,27 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SendCampaignEmailJob;
 use App\Models\Campaign;
 use App\Models\EmailLog;
 use App\Models\EmailTemplate;
-use App\Models\SmtpSetting;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Déclenche les campagnes programmées dont la date_envoi est atteinte.
+ *
+ * RÔLE UNIQUE : créer les email_logs en status='pending'.
+ * Le dispatch des jobs est entièrement géré par campaigns:send-batch
+ * qui tourne chaque minute et envoie rate_limit emails par campagne.
+ *
+ * ✅ Plus de pre-scheduling avec délais → plus de queue à 48k jobs
+ * ✅ Plus de jobs orphelins si le serveur redémarre
+ */
 class DispatchScheduledCampaignsCommand extends Command
 {
-    protected $signature = 'campaigns:dispatch-scheduled';
-    protected $description = 'Déclencher les campagnes programmées dont la date_envoi est atteinte';
+    protected $signature   = 'campaigns:dispatch-scheduled';
+    protected $description = 'Déclencher les campagnes programmées (crée les email_logs, le batch se charge de l\'envoi)';
 
     public function handle(): int
     {
@@ -30,12 +38,11 @@ class DispatchScheduledCampaignsCommand extends Command
 
         foreach ($campaigns as $campaign) {
             try {
-                $this->dispatchCampaign($campaign);
-                $this->info("✅ Campagne #{$campaign->id} ({$campaign->nom}) déclenchée.");
+                $this->initializeCampaign($campaign);
+                $this->info("✅ Campagne #{$campaign->id} ({$campaign->nom}) initialisée.");
             } catch (\Throwable $e) {
-                Log::error("Erreur déclenchement campagne programmée #{$campaign->id}: " . $e->getMessage());
+                Log::error("Erreur initialisation campagne #{$campaign->id}: " . $e->getMessage());
                 $this->error("❌ Erreur campagne #{$campaign->id}: " . $e->getMessage());
-                // Remettre en brouillon pour éviter de rester bloquée en "programmee"
                 $campaign->update(['statut' => 'brouillon']);
             }
         }
@@ -43,14 +50,14 @@ class DispatchScheduledCampaignsCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function dispatchCampaign(Campaign $campaign): void
+    private function initializeCampaign(Campaign $campaign): void
     {
         if (! EmailTemplate::hasValidContent($campaign->contenu)) {
             $this->warn("Campagne #{$campaign->id}: contenu invalide, ignorée.");
             return;
         }
 
-        // Atomic lock — prevent double-dispatch if two cron overlap
+        // Verrou atomique — empêche le double-déclenchement si deux crons se chevauchent
         $locked = Campaign::lockForUpdate()->find($campaign->id);
         if (! $locked || $locked->statut !== 'programmee') {
             $this->warn("Campagne #{$campaign->id}: statut changé entre-temps, ignorée.");
@@ -59,6 +66,7 @@ class DispatchScheduledCampaignsCommand extends Command
 
         $locked->update(['statut' => 'en_cours']);
 
+        // ── Construire la requête contacts ────────────────────────────────────────
         $contactQuery = \App\Models\Contact::query()
             ->whereNull('unsubscribed_at')
             ->select(['id', 'email', 'nom', 'prenom', 'entreprise', 'fonction', 'pays', 'prospect_status', 'import_log_id']);
@@ -72,26 +80,27 @@ class DispatchScheduledCampaignsCommand extends Command
             }
         }
 
-        // Pre-load existing logs for duplicate prevention
+        // ── Éviter les doublons (contacts déjà en pending/queued/sent) ────────────
         $existingContactIds = EmailLog::where('campaign_id', $campaign->id)
-            ->whereIn('status', [EmailLog::STATUS_PENDING, EmailLog::STATUS_SENT])
+            ->whereIn('status', [
+                EmailLog::STATUS_PENDING,
+                EmailLog::STATUS_QUEUED,
+                EmailLog::STATUS_SENT,
+                EmailLog::STATUS_DELIVERED,
+            ])
             ->pluck('contact_id')
             ->flip();
 
-        $smtp               = $campaign->resolveSmtpSetting();
-        $rateLimit          = max(1, (int) ($smtp?->rate_limit ?? 3));
-        $delayBetweenEmails = (int) ceil(60 / $rateLimit);
-        $jobIndex           = 0;
-        $totalDispatched    = 0;
+        $totalCreated = 0;
+        $now          = now();
 
+        // ── Créer les email_logs en batch (pas de jobs ici) ───────────────────────
         $contactQuery->chunkById(500, function ($contacts) use (
             $campaign,
             $existingContactIds,
-            $delayBetweenEmails,
-            &$jobIndex,
-            &$totalDispatched
+            $now,
+            &$totalCreated
         ) {
-            $now = now();
             $newContacts = $contacts->filter(fn ($c) => ! isset($existingContactIds[$c->id]));
 
             if ($newContacts->isEmpty()) {
@@ -110,34 +119,14 @@ class DispatchScheduledCampaignsCommand extends Command
             }
 
             DB::table('email_logs')->insert($logsToInsert);
-
-            $insertedLogs = EmailLog::where('campaign_id', $campaign->id)
-                ->where('status', EmailLog::STATUS_PENDING)
-                ->whereIn('contact_id', $newContacts->pluck('id'))
-                ->get(['id', 'contact_id'])
-                ->keyBy('contact_id');
-
-            foreach ($newContacts as $contact) {
-                $log = $insertedLogs->get($contact->id);
-                if (! $log) {
-                    continue;
-                }
-
-                SendCampaignEmailJob::dispatch($campaign, $contact, $log->id)
-                    ->delay(now()->addSeconds($jobIndex * $delayBetweenEmails))
-                    ->onQueue('emails')
-                    ->onConnection('database');
-
-                $jobIndex++;
-                $totalDispatched++;
-            }
+            $totalCreated += count($logsToInsert);
         });
 
-        if ($totalDispatched === 0) {
+        if ($totalCreated === 0) {
             $campaign->update(['statut' => 'brouillon']);
             $this->warn("Campagne #{$campaign->id}: aucun contact actif, remise en brouillon.");
         } else {
-            $this->info("  → {$totalDispatched} jobs dispatchés.");
+            $this->info("  → {$totalCreated} email_logs créés. campaigns:send-batch enverra à {$totalCreated} contacts.");
         }
     }
 }
