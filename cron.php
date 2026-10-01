@@ -1,17 +1,25 @@
 <?php
 /**
- * Script d'exécution du Queue Worker + Scheduler pour Cron OVH
+ * Script d'exécution du Scheduler + Batch Sender + Queue Worker pour Cron OVH
  *
- * Optimisations appliquées :
- * - --max-jobs=200  : traite jusqu'à 200 jobs par run pour vider plus vite la queue
- * - --max-time=50   : stoppe le worker après 50s max (< 60s cron) pour éviter le chevauchement
- * - --memory=256    : mémoire suffisante pour 200 jobs en série
- * - --timeout=25    : timeout par job individuel (SMTP + envoi)
- * - --tries=3       : 3 tentatives par job avant de marquer failed
- * - --backoff=30    : 30 secondes entre chaque retry
+ * Nouvelle architecture (batch-dispatch) :
  *
- * NB : --max-time prime sur --max-jobs si le worker tourne trop longtemps.
- *      Les 2 ensemble garantissent qu'on ne dépasse jamais l'intervalle cron de 60s.
+ *  1. campaigns:dispatch-scheduled  → crée les email_logs pour les campagnes programmées
+ *  2. schedule:run                  → relances auto, nettoyage, etc.
+ *  3. campaigns:send-batch          → cœur du système :
+ *       Pour chaque campagne "en_cours" :
+ *         - Prend rate_limit (=2) email_logs 'pending'
+ *         - Les marque 'queued' (atomique → pas de doublon)
+ *         - Dispatche les jobs SANS délai
+ *       → Débit naturel : 2/min × 11 comptes = 1 320 emails/heure
+ *       → Queue reste toujours petite (≤ 30 jobs)
+ *  4. queue:work                    → traite les ~22 jobs dispatchés cette minute
+ *
+ * Avantages vs ancien système :
+ *  ✅ Plus de 48 000 jobs en file avec des délais de 7 jours
+ *  ✅ Plus de jobs orphelins si le serveur redémarre
+ *  ✅ Toutes les campagnes progressent en parallèle sans se bloquer
+ *  ✅ Rate limit OVH garanti par conception
  */
 
 define('LARAVEL_START', microtime(true));
@@ -23,30 +31,28 @@ $app = require_once __DIR__ . '/bootstrap/app.php';
 
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 
-// 1. Déclencher les campagnes programmées dont l'échéance est arrivée
+// 1. Déclencher les campagnes programmées (crée les email_logs uniquement)
 $kernel->call('campaigns:dispatch-scheduled');
 
-// 2. Exécuter le scheduler Laravel (relances auto, etc.)
+// 2. Scheduler Laravel (relances auto, nettoyage, etc.)
 $kernel->call('schedule:run');
 
-// 3. Traiter immédiatement la file d'attente
-//
-//    ✅ CALCUL BASÉ SUR LES DONNÉES RÉELLES :
-//    - rate_limit = 2 emails/min par compte SMTP OVH
-//    - 2 × 60 = 120 emails/heure par compte (limite OVH = 200/h → safe)
-//    - Jusqu'à 11 comptes SMTP disponibles
-//    - En pratique : ~7 campagnes actives × 2 emails/min = 14 jobs/min
-//
-//    → --max-jobs=14 : traite exactement le débit naturel des campagnes actives
-//    Ajuster si le nombre de campagnes simultanées change (ex: 5 campagnes → 10)
+// 3. Dispatcher le prochain batch pour chaque campagne active
+//    → rate_limit emails par campagne, marqués 'queued' atomiquement
+$kernel->call('campaigns:send-batch');
+
+// 4. Traiter les jobs dispatchés à l'étape 3
+//    --max-jobs=30  : largement suffisant (22 jobs/min max avec 11 comptes)
+//    --max-time=45  : hard stop avant la prochaine minute de cron
+//    --timeout=30   : timeout par job SMTP individuel (OVH peut être lent)
 $kernel->call('queue:work', [
     'connection'        => 'database',
     '--queue'           => 'emails,default',
     '--stop-when-empty' => true,
-    '--max-jobs'        => 14,      // 7 campagnes actives × rate_limit=2 emails/min
-    '--max-time'        => 50,      // Hard stop après 50s (< 60s intervalle cron)
+    '--max-jobs'        => 30,   // 11 comptes × 2/min + marge pour les retries
+    '--max-time'        => 45,   // Hard stop avant le prochain cron (60s)
     '--memory'          => 128,
-    '--timeout'         => 30,      // 30s par job SMTP (OVH peut être lent)
+    '--timeout'         => 30,   // Timeout SMTP par job
     '--tries'           => 3,
     '--backoff'         => 30,
 ]);
