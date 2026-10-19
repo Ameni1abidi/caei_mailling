@@ -81,10 +81,7 @@ Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
             $results['fix_error_messages'] = 'error: ' . $e->getMessage();
         }
 
-        // 4. Lancer le queue worker en arrière-plan (proc_open non-bloquant)
-        // IMPORTANT : on ne fait plus Artisan::call('queue:work') synchrone ici.
-        // Les exceptions SMTP des jobs (ex: 550 OVH) remontaient jusqu'au handler HTTP → 500.
-        // Avec proc_open, le worker tourne en dehors du cycle HTTP : toute exception reste dans le worker.
+        // 4. Lancer le queue worker en arrière-plan (détaché non-bloquant)
         try {
             $phpBin = (PHP_BINARY && !str_contains(PHP_BINARY, 'php-fpm') && @file_exists(PHP_BINARY))
                 ? PHP_BINARY
@@ -92,34 +89,16 @@ Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
             $artisan = base_path('artisan');
             $logFile = storage_path('logs/queue-worker.log');
 
+            // Commande détachée en arrière-plan avec "&" (ne bloque pas la requête HTTP)
             $cmd = sprintf(
-                '%s %s queue:work database --queue=emails,default --stop-when-empty --max-jobs=50 --tries=3 --timeout=55 --memory=128 >> %s 2>&1',
+                '%s %s queue:work database --queue=emails,default --stop-when-empty --max-jobs=30 --tries=3 --timeout=45 --memory=128 >> %s 2>&1 &',
                 escapeshellarg($phpBin),
                 escapeshellarg($artisan),
                 escapeshellarg($logFile)
             );
 
-            // Lancement non-bloquant
-            $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-            $proc = @proc_open($cmd, $descriptors, $pipes);
-            if (is_resource($proc)) {
-                foreach ($pipes as $pipe) {
-                    fclose($pipe);
-                }
-                proc_close($proc);
-                $results['queue_worker'] = 'started in background';
-            } else {
-                // proc_open non disponible sur cet hébergement — fallback synchrone sécurisé
-                \Illuminate\Support\Facades\Artisan::call('queue:work', [
-                    'connection'       => 'database',
-                    '--queue'          => 'emails,default',
-                    '--stop-when-empty'=> true,
-                    '--max-jobs'       => 30,
-                    '--tries'          => 3,
-                    '--timeout'        => 50,
-                ]);
-                $results['queue_worker'] = 'ran synchronously (proc_open unavailable)';
-            }
+            @exec($cmd);
+            $results['queue_worker'] = 'started in background';
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Cron queue worker error: " . $e->getMessage());
             $results['queue_worker'] = 'error: ' . substr($e->getMessage(), 0, 200);
