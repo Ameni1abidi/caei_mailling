@@ -116,10 +116,11 @@ class SystemHealthController extends Controller
             ];
         });
 
-        // 5. Dernières erreurs SMTP (50 plus récentes) et Résumé par type
+        // 5. Dernières erreurs SMTP (50 plus récentes) et Résumé par type (exclure les annulations volontaires)
         $recentErrors = EmailLog::whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED, EmailLog::STATUS_INVALID])
             ->whereNotNull('error_message')
             ->where('error_message', '!=', '')
+            ->where('error_message', '!=', 'Campagne annulée par l\'utilisateur')
             ->with(['campaign:id,nom', 'contact:id,email'])
             ->latest('updated_at')
             ->take(50)
@@ -128,6 +129,7 @@ class SystemHealthController extends Controller
         $topErrorsToday = EmailLog::whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED, EmailLog::STATUS_INVALID])
             ->whereNotNull('error_message')
             ->where('error_message', '!=', '')
+            ->where('error_message', '!=', 'Campagne annulée par l\'utilisateur')
             ->where('updated_at', '>=', $startOfDay)
             ->selectRaw('error_message, count(*) as count')
             ->groupBy('error_message')
