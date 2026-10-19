@@ -164,6 +164,7 @@ class SystemHealthController extends Controller
     {
         try {
             DB::table('jobs')->delete();
+            DB::table('email_logs')->where('status', EmailLog::STATUS_QUEUED)->update(['status' => EmailLog::STATUS_PENDING]);
             return back()->with('success', 'La file d\'attente a été vidée avec succès ! Les jobs parasites ont été supprimés.');
         } catch (\Throwable $e) {
             return back()->with('error', 'Erreur lors du vidage de la file : ' . $e->getMessage());

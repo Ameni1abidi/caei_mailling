@@ -21,8 +21,9 @@ class AutoRetryFailedEmailsCommand extends Command
 
         $totalRelances = 0;
 
-        // Process each auto-retry campaign
+        // Process each active en_cours auto-retry campaign
         Campaign::where('auto_retry', true)
+            ->where('statut', 'en_cours')
             ->with(['creator.smtpSetting', 'smtpSetting'])
             ->select(['id', 'nom', 'max_auto_retries', 'created_by', 'smtp_setting_id'])
             ->each(function (Campaign $campaign) use (&$totalRelances) {
@@ -31,10 +32,18 @@ class AutoRetryFailedEmailsCommand extends Command
                 $delayBetweenEmails = (int) ceil(60 / $rateLimit);
                 $maxRetries         = max(1, (int) ($campaign->max_auto_retries ?? 3));
 
-                // Collect IDs of failed logs eligible for retry
+                // Collect IDs of failed logs eligible for retry (exclure les erreurs d'identifiants 535)
                 $failedLogIds = EmailLog::where('campaign_id', $campaign->id)
                     ->where('status', EmailLog::STATUS_FAILED)
                     ->where('retry_count', '<', $maxRetries)
+                    ->where(function ($q) {
+                        $q->whereNull('error_message')
+                          ->orWhere(function ($sub) {
+                              $sub->where('error_message', 'not like', '%535%')
+                                  ->where('error_message', 'not like', '%Authentication failed%')
+                                  ->where('error_message', 'not like', '%Failed to authenticate%');
+                          });
+                    })
                     ->whereHas('contact', fn ($q) => $q->whereNotNull('email'))
                     ->pluck('id');
 
@@ -73,10 +82,6 @@ class AutoRetryFailedEmailsCommand extends Command
                 }
 
                 if ($relancesCampagne > 0) {
-                    DB::table('campaigns')
-                        ->where('id', $campaign->id)
-                        ->update(['statut' => 'en_cours', 'updated_at' => now()]);
-
                     $this->info("Campagne #{$campaign->id} ({$campaign->nom}) : {$relancesCampagne} email(s) remis en file d'attente.");
                 }
             });
