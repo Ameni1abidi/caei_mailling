@@ -289,57 +289,123 @@
             @endif
         </div>
 
-        <!-- ── 4. Dernières Erreurs Détectées ──────────────────────────────── -->
-        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
-            <div class="pb-4 border-b border-slate-100 mb-6 flex items-center justify-between">
+        <!-- ── 4. Journal Détaillé des Erreurs SMTP ────────────────────────────── -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+            <div class="pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
                         <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Journal des Dernières Erreurs SMTP
+                        Journal Complet des Erreurs SMTP ({{ $recentErrors->count() }} dernières)
                     </h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Permet de repérer immédiatement une boîte bloquée, un quota dépassé ou une adresse invalide.</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Historique détaillé pour analyser et corriger les blocages en direct.</p>
+                </div>
+
+                <!-- Champ de recherche en direct -->
+                <div class="relative w-full sm:w-72">
+                    <input type="text" id="errorSearchInput" onkeyup="filterErrorTable()" placeholder="Rechercher une erreur, un email..."
+                           class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-4 py-2 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                 </div>
             </div>
 
+            <!-- Synthèse des principales causes aujourd'hui -->
+            @if(isset($topErrorsToday) && $topErrorsToday->isNotEmpty())
+                <div>
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Principaux types d'erreurs aujourd'hui :</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($topErrorsToday as $te)
+                            @php
+                                $isAuth = str_contains($te->error_message, 'authenticate') || str_contains($te->error_message, 'password');
+                                $isQuota = str_contains($te->error_message, 'quota') || str_contains($te->error_message, '550');
+                                $isUnsub = str_contains($te->error_message, 'désinscrit');
+                            @endphp
+                            <div class="p-3 rounded-xl border {{ $isAuth ? 'bg-rose-50/70 border-rose-200 text-rose-800' : ($isQuota ? 'bg-amber-50/70 border-amber-200 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-700') }}">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-extrabold uppercase tracking-wider">
+                                        @if($isAuth) 🔑 Authentification SMTP @elseif($isQuota) ⏳ Quota OVH Dépassé @elseif($isUnsub) 🚫 Contact Désinscrit @else ⚠️ Erreur SMTP @endif
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-black bg-white/90 shadow-sm">
+                                        {{ number_format($te->count) }} fois
+                                    </span>
+                                </div>
+                                <div class="text-[11px] mt-1.5 line-clamp-2 opacity-90 font-mono">
+                                    {{ $te->error_message }}
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             @if($recentErrors->isEmpty())
-                <div class="text-center py-8 text-slate-400 text-sm">
+                <div class="text-center py-12 text-slate-400 text-sm">
                     ✅ Aucune erreur récente ! Tous les derniers envois se sont déroulés avec succès.
                 </div>
             @else
-                <div class="overflow-x-auto">
-                    <table class="w-full text-xs text-left text-slate-600 border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 tracking-wider border-b border-slate-200">
-                                <th class="px-4 py-2.5">Date / Heure</th>
-                                <th class="px-4 py-2.5">Campagne</th>
-                                <th class="px-4 py-2.5">Destinataire</th>
-                                <th class="px-4 py-2.5">Message d'erreur SMTP</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach($recentErrors as $err)
-                                <tr class="hover:bg-rose-50/30 transition">
-                                    <td class="px-4 py-2.5 font-semibold text-slate-700 whitespace-nowrap">
-                                        {{ $err->updated_at->format('d/m/Y H:i:s') }}
-                                    </td>
-                                    <td class="px-4 py-2.5 font-bold text-slate-900">
-                                        #{{ $err->campaign_id }} {{ $err->campaign?->nom ?? 'N/A' }}
-                                    </td>
-                                    <td class="px-4 py-2.5 text-slate-600 font-mono">
-                                        {{ $err->contact?->email ?? 'N/A' }}
-                                    </td>
-                                    <td class="px-4 py-2.5 text-rose-600 font-medium">
-                                        {{ Str::limit($err->error_message, 120) }}
-                                    </td>
+                <div class="border border-slate-200 rounded-xl overflow-hidden shadow-inner">
+                    <div class="max-h-[600px] overflow-y-auto">
+                        <table id="errorTable" class="w-full text-xs text-left text-slate-600 border-collapse">
+                            <thead class="sticky top-0 bg-slate-100 z-10 border-b border-slate-200">
+                                <tr class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                                    <th class="px-4 py-3 whitespace-nowrap">Date / Heure</th>
+                                    <th class="px-4 py-3">Campagne</th>
+                                    <th class="px-4 py-3">Destinataire</th>
+                                    <th class="px-4 py-3">Message d'erreur complet</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 bg-white">
+                                @foreach($recentErrors as $err)
+                                    @php
+                                        $errText = $err->error_message;
+                                        $isAuth = str_contains($errText, 'authenticate');
+                                        $isQuota = str_contains($errText, 'quota');
+                                    @endphp
+                                    <tr class="error-row hover:bg-slate-50 transition">
+                                        <td class="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap align-top">
+                                            {{ $err->updated_at->format('d/m/Y H:i:s') }}
+                                            <div class="text-[10px] text-slate-400 font-normal">{{ $err->updated_at->diffForHumans() }}</div>
+                                        </td>
+                                        <td class="px-4 py-3 font-bold text-slate-900 whitespace-nowrap align-top">
+                                            <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] mr-1">#{{ $err->campaign_id }}</span>
+                                            {{ $err->campaign?->nom ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-800 font-mono align-top whitespace-nowrap">
+                                            {{ $err->contact?->email ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-4 py-3 align-top">
+                                            <div class="p-2 rounded-lg text-[11px] font-mono leading-relaxed {{ $isAuth ? 'bg-rose-50 text-rose-700 border border-rose-100' : ($isQuota ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-slate-50 text-slate-700 border border-slate-100') }}">
+                                                {{ $errText }}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             @endif
         </div>
+
+        <script>
+            function filterErrorTable() {
+                var input = document.getElementById("errorSearchInput");
+                var filter = input.value.toLowerCase();
+                var rows = document.getElementsByClassName("error-row");
+
+                for (var i = 0; i < rows.length; i++) {
+                    var text = rows[i].textContent || rows[i].innerText;
+                    if (text.toLowerCase().indexOf(filter) > -1) {
+                        rows[i].style.display = "";
+                    } else {
+                        rows[i].style.display = "none";
+                    }
+                }
+            }
+        </script>
 
     </div>
 </x-app-layout>
