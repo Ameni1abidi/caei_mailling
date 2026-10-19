@@ -203,6 +203,13 @@ Route::middleware('auth')->group(function () {
         Route::post('users/test-smtp/{user?}', [UserController::class, 'testSmtp'])->name('users.test-smtp');
         Route::resource('users', UserController::class);
 
+        // Surveillance & Santé du Système (Admin)
+        Route::get('system/monitoring', [App\Http\Controllers\SystemHealthController::class, 'index'])->name('system.monitoring');
+        Route::post('system/clear-queue', [App\Http\Controllers\SystemHealthController::class, 'clearQueue'])->name('system.clear-queue');
+        Route::post('system/dispatch-batch', [App\Http\Controllers\SystemHealthController::class, 'dispatchBatch'])->name('system.dispatch-batch');
+        Route::post('system/campaign/{campaign}/pause', [App\Http\Controllers\SystemHealthController::class, 'togglePause'])->name('system.campaign.pause');
+        Route::post('system/campaign/{campaign}/terminate', [App\Http\Controllers\SystemHealthController::class, 'terminateCampaign'])->name('system.campaign.terminate');
+
         // GrapesJS Builder Routes
         Route::get('email-templates/{email_template}/builder', [EmailTemplateController::class, 'builder'])
             ->name('email-templates.builder');

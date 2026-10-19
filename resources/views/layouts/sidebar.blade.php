@@ -33,6 +33,13 @@
             'active' => 'smtp-settings.*',
             'icon'   => 'smtp',
         ];
+
+        $mainLinks[] = [
+            'label'  => 'Surveillance Système',
+            'route'  => 'system.monitoring',
+            'active' => 'system.monitoring*',
+            'icon'   => 'automation',
+        ];
     }
 
     $soonLinks = [
