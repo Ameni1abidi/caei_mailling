@@ -42,7 +42,13 @@ class SystemHealthController extends Controller
             ->pluck('count', 'campaign_id');
 
         // Associer à chaque compte SMTP les campagnes et le débit
-        $activeCampaigns = Campaign::whereIn('statut', ['en_cours', 'en_pause'])
+        $activeCampaigns = Campaign::where('statut', 'en_cours')
+            ->orWhere(function ($q) {
+                $q->whereIn('statut', ['en_pause', 'brouillon'])
+                  ->whereHas('emailLogs', function ($el) {
+                      $el->where('status', '!=', EmailLog::STATUS_PENDING);
+                  });
+            })
             ->with(['creator.smtpSetting', 'smtpSetting'])
             ->get();
 
@@ -176,20 +182,38 @@ class SystemHealthController extends Controller
 
     public function togglePause(Campaign $campaign)
     {
-        if ($campaign->statut === 'en_cours') {
-            $campaign->update(['statut' => 'en_pause']);
-            return back()->with('success', "La campagne \"{$campaign->nom}\" a été mise en pause.");
-        } elseif ($campaign->statut === 'en_pause') {
-            $campaign->update(['statut' => 'en_cours']);
-            return back()->with('success', "La campagne \"{$campaign->nom}\" a été reprise.");
-        }
+        try {
+            if ($campaign->statut === 'en_cours') {
+                try {
+                    $campaign->update(['statut' => 'en_pause']);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Si l'enum MySQL n'a pas encore 'en_pause', mettre à jour l'enum ou fallback sur 'brouillon'
+                    try {
+                        DB::statement("ALTER TABLE campaigns MODIFY COLUMN statut ENUM('brouillon', 'programmee', 'en_cours', 'envoyee', 'annulee', 'en_pause') DEFAULT 'brouillon'");
+                        $campaign->update(['statut' => 'en_pause']);
+                    } catch (\Throwable $e2) {
+                        $campaign->update(['statut' => 'brouillon']);
+                    }
+                }
+                return redirect()->route('system.monitoring')->with('success', "La campagne \"{$campaign->nom}\" a été mise en pause.");
+            } elseif (in_array($campaign->statut, ['en_pause', 'brouillon'])) {
+                $campaign->update(['statut' => 'en_cours']);
+                return redirect()->route('system.monitoring')->with('success', "La campagne \"{$campaign->nom}\" a été reprise.");
+            }
 
-        return back()->with('error', 'Action non disponible pour le statut actuel.');
+            return redirect()->route('system.monitoring')->with('error', 'Action non disponible pour le statut actuel.');
+        } catch (\Throwable $e) {
+            return redirect()->route('system.monitoring')->with('error', 'Erreur lors de la mise en pause : ' . $e->getMessage());
+        }
     }
 
     public function terminateCampaign(Campaign $campaign)
     {
-        $campaign->update(['statut' => 'envoyee']);
-        return back()->with('success', "La campagne \"{$campaign->nom}\" a été clôturée.");
+        try {
+            $campaign->update(['statut' => 'annulee']);
+            return redirect()->route('system.monitoring')->with('success', "La campagne \"{$campaign->nom}\" a été clôturée/bloquée avec succès.");
+        } catch (\Throwable $e) {
+            return redirect()->route('system.monitoring')->with('error', 'Erreur lors de la clôture : ' . $e->getMessage());
+        }
     }
 }
