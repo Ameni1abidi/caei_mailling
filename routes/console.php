@@ -19,6 +19,11 @@ Schedule::command('campaigns:dispatch-scheduled')
     ->everyMinute()
     ->withoutOverlapping();
 
+// Dispatcher le batch d'emails pour les campagnes actives (chaque minute)
+Schedule::command('campaigns:send-batch')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 // Traitement automatique de la file d'attente des emails
 Schedule::command('queue:work database --queue=emails,default --stop-when-empty --tries=3 --timeout=55 --max-jobs=50 --memory=128')
     ->everyMinute()

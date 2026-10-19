@@ -49,6 +49,15 @@ Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
             $results['dispatch_scheduled'] = 'error: ' . $e->getMessage();
         }
 
+        // 1b. Dispatcher le batch d'emails pour chaque campagne active
+        try {
+            \Illuminate\Support\Facades\Artisan::call('campaigns:send-batch');
+            $results['send_batch'] = 'ok';
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Cron send-batch error: " . $e->getMessage());
+            $results['send_batch'] = 'error: ' . $e->getMessage();
+        }
+
         // 2. Exécuter le scheduler Laravel (relances auto)
         try {
             \Illuminate\Support\Facades\Artisan::call('schedule:run');
@@ -77,7 +86,9 @@ Route::get('/cron/run', function (\Illuminate\Http\Request $request) {
         // Les exceptions SMTP des jobs (ex: 550 OVH) remontaient jusqu'au handler HTTP → 500.
         // Avec proc_open, le worker tourne en dehors du cycle HTTP : toute exception reste dans le worker.
         try {
-            $phpBin  = PHP_BINARY ?: 'php';
+            $phpBin = (PHP_BINARY && !str_contains(PHP_BINARY, 'php-fpm') && @file_exists(PHP_BINARY))
+                ? PHP_BINARY
+                : (file_exists('/usr/local/php8.4/bin/php') ? '/usr/local/php8.4/bin/php' : 'php');
             $artisan = base_path('artisan');
             $logFile = storage_path('logs/queue-worker.log');
 
