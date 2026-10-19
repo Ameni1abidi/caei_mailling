@@ -62,6 +62,12 @@ class SendCampaignEmailJob implements ShouldQueue
             return;
         }
 
+        // Si la campagne a été mise en pause ou en brouillon, ne pas envoyer et remettre en attente
+        if (in_array($campaign->statut, ['en_pause', 'brouillon'])) {
+            $emailLog->update(['status' => EmailLog::STATUS_PENDING]);
+            return;
+        }
+
         if (! filter_var($this->contact->email, FILTER_VALIDATE_EMAIL)) {
             $emailLog->update([
                 'status'        => EmailLog::STATUS_INVALID,
