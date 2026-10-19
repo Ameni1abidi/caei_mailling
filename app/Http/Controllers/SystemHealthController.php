@@ -110,13 +110,23 @@ class SystemHealthController extends Controller
             ];
         });
 
-        // 5. Dernières erreurs SMTP (10 plus récentes)
+        // 5. Dernières erreurs SMTP (50 plus récentes) et Résumé par type
         $recentErrors = EmailLog::whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED, EmailLog::STATUS_INVALID])
             ->whereNotNull('error_message')
             ->where('error_message', '!=', '')
             ->with(['campaign:id,nom', 'contact:id,email'])
             ->latest('updated_at')
-            ->take(8)
+            ->take(50)
+            ->get();
+
+        $topErrorsToday = EmailLog::whereIn('status', [EmailLog::STATUS_FAILED, EmailLog::STATUS_BOUNCED, EmailLog::STATUS_INVALID])
+            ->whereNotNull('error_message')
+            ->where('error_message', '!=', '')
+            ->where('updated_at', '>=', $startOfDay)
+            ->selectRaw('error_message, count(*) as count')
+            ->groupBy('error_message')
+            ->orderByDesc('count')
+            ->take(6)
             ->get();
 
         // 6. Statistiques globales du jour
@@ -137,6 +147,7 @@ class SystemHealthController extends Controller
             'smtpStats',
             'campaignsData',
             'recentErrors',
+            'topErrorsToday',
             'globalTodaySent',
             'globalTodayFailed',
             'globalTodayPending'
