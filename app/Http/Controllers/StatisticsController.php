@@ -17,17 +17,31 @@ class StatisticsController extends Controller
         $isAdmin = $user?->hasRole('admin');
 
         // ── Filters ───────────────────────────────────────────────────────
-        $period     = $request->input('period', '30');   // days
-        $campaignId = $request->input('campaign_id');
+        $period        = $request->input('period', '30');   // days or 'custom'
+        $campaignId    = $request->input('campaign_id');
+        $dateFromInput = $request->input('date_from');
+        $dateToInput   = $request->input('date_to');
 
-        $dateFrom = match ($period) {
-            '7'   => now()->subDays(7),
-            '30'  => now()->subDays(30),
-            '90'  => now()->subDays(90),
-            '365' => now()->subDays(365),
-            'all' => null,
-            default => now()->subDays(30),
-        };
+        $dateFrom = null;
+        $dateTo   = null;
+
+        if ($period === 'custom') {
+            if ($dateFromInput) {
+                $dateFrom = \Carbon\Carbon::parse($dateFromInput)->startOfDay();
+            }
+            if ($dateToInput) {
+                $dateTo = \Carbon\Carbon::parse($dateToInput)->endOfDay();
+            }
+        } else {
+            $dateFrom = match ($period) {
+                '7'   => now()->subDays(7)->startOfDay(),
+                '30'  => now()->subDays(30)->startOfDay(),
+                '90'  => now()->subDays(90)->startOfDay(),
+                '365' => now()->subDays(365)->startOfDay(),
+                'all' => null,
+                default => now()->subDays(30)->startOfDay(),
+            };
+        }
 
         // ── Campaign list for filter dropdown — scoped to user ─────────────
         $campaigns = Campaign::forUser($user)
@@ -39,6 +53,9 @@ class StatisticsController extends Controller
         $emailQuery = EmailLog::whereIn('campaign_id', $userCampaignIds);
         if ($dateFrom) {
             $emailQuery->where('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $emailQuery->where('created_at', '<=', $dateTo);
         }
         if ($campaignId) {
             $emailQuery->where('campaign_id', $campaignId);
@@ -86,6 +103,9 @@ class StatisticsController extends Controller
         if ($dateFrom) {
             $dailyEmailsQuery->where('created_at', '>=', $dateFrom);
         }
+        if ($dateTo) {
+            $dailyEmailsQuery->where('created_at', '<=', $dateTo);
+        }
         if ($campaignId) {
             $dailyEmailsQuery->where('campaign_id', $campaignId);
         }
@@ -93,7 +113,8 @@ class StatisticsController extends Controller
         $dailyEmails = $dailyEmailsQuery->get();
 
         // ── Per-campaign stats table ──────────────────────────────────────
-        $perCampaignQuery = Campaign::select('campaigns.id', 'campaigns.nom', 'campaigns.statut', 'campaigns.created_at')
+        $perCampaignQuery = Campaign::forUser($user)
+            ->select('campaigns.id', 'campaigns.nom', 'campaigns.statut', 'campaigns.created_at')
             ->withCount([
                 'emailLogs as total_count',
                 'emailLogs as sent_count' => fn ($q) => $q->whereIn('status', ['sent', 'delivered']),
@@ -107,6 +128,9 @@ class StatisticsController extends Controller
         if ($dateFrom) {
             $perCampaignQuery->where('campaigns.created_at', '>=', $dateFrom);
         }
+        if ($dateTo) {
+            $perCampaignQuery->where('campaigns.created_at', '<=', $dateTo);
+        }
         if ($campaignId) {
             $perCampaignQuery->where('campaigns.id', $campaignId);
         }
@@ -119,9 +143,22 @@ class StatisticsController extends Controller
             ->pluck('cnt', 'prospect_status');
 
         // ── Top domains avec le plus de bounces ───────────────────────────
-        $topBouncedDomains = DB::table('email_logs')
+        $topBouncedQuery = DB::table('email_logs')
             ->join('contacts', 'email_logs.contact_id', '=', 'contacts.id')
             ->where('email_logs.status', 'bounced')
+            ->whereIn('email_logs.campaign_id', $userCampaignIds);
+
+        if ($dateFrom) {
+            $topBouncedQuery->where('email_logs.created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $topBouncedQuery->where('email_logs.created_at', '<=', $dateTo);
+        }
+        if ($campaignId) {
+            $topBouncedQuery->where('email_logs.campaign_id', $campaignId);
+        }
+
+        $topBouncedDomains = $topBouncedQuery
             ->selectRaw("SUBSTRING_INDEX(contacts.email, '@', -1) as domain, COUNT(*) as cnt")
             ->groupBy('domain')
             ->orderByDesc('cnt')
@@ -132,6 +169,8 @@ class StatisticsController extends Controller
             'campaigns',
             'period',
             'campaignId',
+            'dateFromInput',
+            'dateToInput',
             'totalSent',
             'totalDelivered',
             'totalOpened',
