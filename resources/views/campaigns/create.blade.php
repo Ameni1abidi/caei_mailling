@@ -357,7 +357,7 @@
                                                               :style="'text-align:' + (block.align || 'left') + '; font-size:' + (block.fontSize || '15px') + '; color:' + (block.color || '#1E1B4B') + ';'"
                                                               rows="4"
                                                               class="w-full border-0 focus:ring-0 p-1 leading-relaxed resize-none outline-none bg-transparent font-sans"
-                                                              placeholder="Bonjour {{prenom}} {{nom}}, ..."></textarea>
+                                                              placeholder="Bonjour @{{prenom}} @{{nom}}, ..."></textarea>
                                                 </div>
                                             </template>
 
