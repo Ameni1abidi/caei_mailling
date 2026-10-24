@@ -184,7 +184,6 @@ class EmailTemplate extends Model
         // Tracking de clics désactivé
         return $html;
     }
-    }
 
     public static function sanitizeContent(string $content): string
     {
