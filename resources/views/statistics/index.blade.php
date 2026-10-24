@@ -1,4 +1,28 @@
 <x-app-layout>
+    {{-- Flatpickr Stylesheet --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+    <style>
+        .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange,
+        .flatpickr-day.selected.inRange, .flatpickr-day.startRange.inRange, .flatpickr-day.endRange.inRange,
+        .flatpickr-day.selected:focus, .flatpickr-day.startRange:focus, .flatpickr-day.endRange:focus,
+        .flatpickr-day.selected:hover, .flatpickr-day.startRange:hover, .flatpickr-day.endRange:hover {
+            background: #C57A1E !important;
+            border-color: #C57A1E !important;
+        }
+        .flatpickr-day.today {
+            border-color: #C57A1E !important;
+        }
+        .flatpickr-day.today:hover {
+            background: #FEF3C7 !important;
+        }
+        .flatpickr-calendar {
+            border-radius: 1rem !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+            border: 1px solid #E2E8F0 !important;
+        }
+    </style>
+
     <div class="py-8 bg-slate-50 min-h-screen text-slate-800 font-sans">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
@@ -22,6 +46,15 @@
                         </span>
                     @endif
 
+                    @if($period === 'custom' && ($dateFromInput || $dateToInput))
+                        <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 shadow-sm">
+                            <svg class="w-3.5 h-3.5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            Période : {{ $dateFromInput ? \Carbon\Carbon::parse($dateFromInput)->format('d/m/Y') : '...' }} &rarr; {{ $dateToInput ? \Carbon\Carbon::parse($dateToInput)->format('d/m/Y') : 'Aujourd\'hui' }}
+                        </span>
+                    @endif
+
                     <a href="{{ route('campaigns.index') }}"
                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/80 transition-all duration-200 shadow-sm">
                         <svg class="w-4 h-4 text-[#C57A1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,11 +67,14 @@
 
             {{-- ── Filters Toolbar Card ────────────────────────────────────────── --}}
             <form method="GET" action="{{ route('statistics.index') }}"
+                  x-data="{ period: '{{ $period }}' }"
                   class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-5">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                <div class="flex flex-col gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 items-end"
+                         :class="period === 'custom' ? 'lg:grid-cols-12 gap-4' : 'lg:grid-cols-3 gap-4'">
+                        
                         <!-- Période -->
-                        <div>
+                        <div :class="period === 'custom' ? 'lg:col-span-3' : 'lg:col-span-1'">
                             <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                                 <svg class="w-4 h-4 text-[#C57A1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -46,15 +82,65 @@
                                 Période d'analyse
                             </label>
                             <select name="period"
+                                    x-model="period"
                                     class="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 text-sm font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-[#C57A1E]/30 focus:border-[#C57A1E] focus:outline-none transition-all">
-                                @foreach(['7' => '7 derniers jours', '30' => '30 derniers jours', '90' => '90 derniers jours', '365' => 'Cette année', 'all' => 'Toutes les données (Historique complet)'] as $val => $label)
-                                    <option value="{{ $val }}" {{ $period === $val ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
+                                <option value="7" {{ $period === '7' ? 'selected' : '' }}>7 derniers jours</option>
+                                <option value="30" {{ $period === '30' ? 'selected' : '' }}>30 derniers jours</option>
+                                <option value="90" {{ $period === '90' ? 'selected' : '' }}>90 derniers jours</option>
+                                <option value="365" {{ $period === '365' ? 'selected' : '' }}>Cette année</option>
+                                <option value="all" {{ $period === 'all' ? 'selected' : '' }}>Toutes les données (Historique complet)</option>
+                                <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>📅 Période personnalisée (Calendrier)</option>
                             </select>
                         </div>
 
+                        <!-- Date début (Calendrier) -->
+                        <div x-show="period === 'custom'" x-cloak class="lg:col-span-2">
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                Date début
+                            </label>
+                            <div class="relative">
+                                <input type="text"
+                                       id="date_from"
+                                       name="date_from"
+                                       value="{{ $dateFromInput }}"
+                                       placeholder="JJ/MM/AAAA"
+                                       class="flatpickr-date w-full rounded-xl border border-slate-200/80 bg-slate-50/80 pl-10 pr-3.5 py-2.5 text-sm font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-[#C57A1E]/30 focus:border-[#C57A1E] focus:outline-none transition-all cursor-pointer">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Date fin (Calendrier) -->
+                        <div x-show="period === 'custom'" x-cloak class="lg:col-span-2">
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                Date fin
+                            </label>
+                            <div class="relative">
+                                <input type="text"
+                                       id="date_to"
+                                       name="date_to"
+                                       value="{{ $dateToInput }}"
+                                       placeholder="JJ/MM/AAAA"
+                                       class="flatpickr-date w-full rounded-xl border border-slate-200/80 bg-slate-50/80 pl-10 pr-3.5 py-2.5 text-sm font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-[#C57A1E]/30 focus:border-[#C57A1E] focus:outline-none transition-all cursor-pointer">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-rose-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Campagne -->
-                        <div>
+                        <div :class="period === 'custom' ? 'lg:col-span-3' : 'lg:col-span-1'">
                             <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                                 <svg class="w-4 h-4 text-[#C57A1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -71,24 +157,27 @@
                                 @endforeach
                             </select>
                         </div>
-                    </div>
 
-                    <!-- Action buttons -->
-                    <div class="flex items-center gap-3">
-                        <button type="submit"
-                                class="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#D9822B] via-[#C57A1E] to-[#B86D18] hover:from-[#E58E26] hover:to-[#C57A1E] text-white text-sm font-extrabold rounded-xl transition-all duration-200 shadow-md shadow-amber-600/20 transform hover:-translate-y-0.5">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                            </svg>
-                            Appliquer le filtre
-                        </button>
+                        <!-- Action buttons -->
+                        <div :class="period === 'custom' ? 'lg:col-span-2' : 'lg:col-span-1'" class="flex items-center gap-2">
+                            <button type="submit"
+                                    class="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#D9822B] via-[#C57A1E] to-[#B86D18] hover:from-[#E58E26] hover:to-[#C57A1E] text-white text-sm font-extrabold rounded-xl transition-all duration-200 shadow-md shadow-amber-600/20 transform hover:-translate-y-0.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                                </svg>
+                                <span>Filtrer</span>
+                            </button>
 
-                        @if($period !== '30' || $campaignId)
-                            <a href="{{ route('statistics.index') }}"
-                               class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm">
-                                Réinitialiser
-                            </a>
-                        @endif
+                            @if($period !== '30' || $campaignId || $dateFromInput || $dateToInput)
+                                <a href="{{ route('statistics.index') }}"
+                                   title="Réinitialiser les filtres"
+                                   class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    </svg>
+                                </a>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </form>
@@ -556,6 +645,23 @@
                         },
                         animation: { duration: 600 }
                     }
+                });
+            }
+        });
+    </script>
+
+    {{-- ── Flatpickr Calendar Script ─────────────────────────────────────── --}}
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr(".flatpickr-date", {
+                    locale: "fr",
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "d/m/Y",
+                    allowInput: true,
                 });
             }
         });
