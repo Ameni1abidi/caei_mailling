@@ -1,5 +1,47 @@
 <x-app-layout>
-    <div class="p-6 max-w-7xl mx-auto space-y-6">
+    <style>
+        .studio-builder-layout {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 24px !important;
+            align-items: flex-start !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .studio-palette-col {
+            width: 250px !important;
+            min-width: 250px !important;
+            max-width: 250px !important;
+            flex-shrink: 0 !important;
+            box-sizing: border-box !important;
+        }
+        .studio-editor-col {
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .studio-preview-col {
+            width: 420px !important;
+            min-width: 360px !important;
+            max-width: 440px !important;
+            flex-shrink: 0 !important;
+            box-sizing: border-box !important;
+        }
+        @media (max-width: 1200px) {
+            .studio-builder-layout {
+                flex-direction: column !important;
+            }
+            .studio-palette-col,
+            .studio-editor-col,
+            .studio-preview-col {
+                width: 100% !important;
+                min-width: 100% !important;
+                max-width: 100% !important;
+            }
+        }
+    </style>
+    <div class="p-4 md:p-6 max-w-[1600px] w-full mx-auto space-y-6">
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
             <div class="flex items-center gap-4">
@@ -313,11 +355,11 @@
 
                 <!-- ── MODE CONSTRUCTEUR 3 COLONNES ──────────────────────────────────── -->
                 <div x-show="mode === 'builder'"
-                     class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
+                     class="studio-builder-layout"
                      :class="isFullscreen ? 'flex-1 overflow-hidden mt-4' : ''">
 
-                    <!-- Colonne 1 : Palette d'outils / Blocs (3 cols) -->
-                    <div class="lg:col-span-3 space-y-3" :class="isFullscreen ? 'overflow-y-auto h-full pr-2' : ''">
+                    <!-- Colonne 1 : Palette d'outils / Blocs (250px) -->
+                    <div class="studio-palette-col space-y-3" :class="isFullscreen ? 'overflow-y-auto h-full pr-2' : ''">
                         <div class="p-4 rounded-2xl border"
                              :class="isFullscreen ? 'bg-slate-900 border-slate-800' : 'bg-slate-50/80 border-slate-200/70'">
                             <div class="text-[11px] font-black uppercase tracking-wider mb-3 flex items-center gap-1.5"
@@ -411,8 +453,8 @@
                         </div>
                     </div>
 
-                    <!-- Colonne 2 : Zone de travail spacieuse (5 cols) -->
-                    <div class="lg:col-span-5 space-y-4" :class="isFullscreen ? 'overflow-y-auto h-full pr-2' : ''">
+                    <!-- Colonne 2 : Zone de travail spacieuse (Éditeur central) -->
+                    <div class="studio-editor-col space-y-4" :class="isFullscreen ? 'overflow-y-auto h-full pr-2' : ''">
                         <template x-if="blocks.length === 0">
                             <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
                                 <div class="w-12 h-12 rounded-full bg-amber-50 text-[#C57A1E] flex items-center justify-center mx-auto mb-3">
@@ -490,6 +532,7 @@
                                                           @input="updateHtml()"
                                                           rows="6"
                                                           class="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 text-sm text-slate-800 leading-relaxed focus:bg-white focus:border-[#C57A1E] focus:ring-2 focus:ring-[#C57A1E]/20 transition-all font-sans"
+                                                          style="width: 100%; min-height: 160px; box-sizing: border-box;"
                                                           placeholder="Rédigez votre texte ici..."></textarea>
                                             </div>
                                         </template>
@@ -622,8 +665,8 @@
                         </div>
                     </div>
 
-                    <!-- Colonne 3 : PRÉVISUALISATION EN DIRECT (4 cols) -->
-                    <div class="lg:col-span-4" :class="isFullscreen ? 'overflow-y-auto h-full pl-2' : 'sticky top-6'">
+                    <!-- Colonne 3 : PRÉVISUALISATION EN DIRECT (420px) -->
+                    <div class="studio-preview-col" :class="isFullscreen ? 'overflow-y-auto h-full pl-2' : 'sticky top-6'">
                         <div class="rounded-2xl border shadow-sm overflow-hidden"
                              :class="isFullscreen ? 'bg-slate-900 border-slate-800' : 'bg-slate-100/90 border-slate-200/80'">
 
