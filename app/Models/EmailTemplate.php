@@ -130,6 +130,23 @@ class EmailTemplate extends Model
                     $html .= '<div style="margin:24px 0 0 0; padding-top:16px; border-top:1px solid #f1f5f9; font-style:italic; color:#334155; line-height:1.6;">' . nl2br(e($content)) . '</div>';
                     break;
 
+                case 'heading':
+                    $content = CampaignController::personnaliser((string) ($block['content'] ?? ''), $contact, $extraVariables);
+                    $level = in_array($block['level'] ?? 'h2', ['h1', 'h2', 'h3']) ? $block['level'] : 'h2';
+                    $fontSize = $level === 'h1' ? '24px' : ($level === 'h2' ? '20px' : '17px');
+                    $align = in_array($block['align'] ?? 'left', ['left', 'center', 'right']) ? $block['align'] : 'left';
+                    $html .= '<div style="margin:18px 0 12px 0; text-align:' . e($align) . ';"><h2 style="margin:0; font-size:' . $fontSize . '; font-weight:800; color:#03123F; letter-spacing:-0.5px;">' . e($content) . '</h2></div>';
+                    break;
+
+                case 'divider':
+                    $html .= '<div style="margin:22px 0; border-top:1px solid #e2e8f0;"></div>';
+                    break;
+
+                case 'callout':
+                    $content = CampaignController::personnaliser((string) ($block['content'] ?? ''), $contact, $extraVariables);
+                    $html .= '<div style="margin:20px 0; padding:16px 20px; background:#fffbeb; border-left:4px solid #C57A1E; border-radius:8px;"><p style="margin:0; line-height:1.6; color:#92400e; font-size:14px;">' . nl2br(e($content)) . '</p></div>';
+                    break;
+
                 case 'attachment':
                     $label = CampaignController::personnaliser((string) ($block['label'] ?? 'Pièce jointe'), $contact, $extraVariables);
                     $url = CampaignController::personnaliser((string) ($block['url'] ?? '#attachments'), $contact, $extraVariables);
